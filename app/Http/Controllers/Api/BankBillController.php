@@ -53,6 +53,12 @@ class BankBillController extends Controller
 
         foreach ($dataArray as $data) {
             $data['accountName'] = $data['fullname'];
+            $accountNumber = $data['accountNumber'];
+
+            // Loại bỏ tiền tố "BR" nếu có
+            $accountNumberWithoutPrefix = substr($accountNumber, 2);
+            // Lấy 6 số đầu và 6 số cuối, thay thế phần giữa bằng "*****"
+            $formattedAccountNumber = substr($accountNumberWithoutPrefix, 0, 6) . "*****" . substr($accountNumberWithoutPrefix, -6);
 
             if (!file_exists($fileName)) {
                 return response()->json(['error' => "Không tìm thấy file mẫu tại: $fileName"], 400);
@@ -74,7 +80,7 @@ class BankBillController extends Controller
             $templateProcessor->setValue('addressOne', $data['addressOne']);
             $templateProcessor->setValue('addressTwo', $data['addressTwo']);
             $templateProcessor->setValue('accountName', $data['accountName']);
-            $templateProcessor->setValue('accountNumber', $data['accountNumber']);
+            $templateProcessor->setValue('accountNumber', $formattedAccountNumber);
             $templateProcessor->setValue('statementPeriod', $data['statementPeriod']);
             $templateProcessor->setValue('date', Carbon::now()->format('d/m/Y'));
 
