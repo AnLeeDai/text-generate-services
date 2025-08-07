@@ -16,9 +16,7 @@ class BankBillController extends Controller
 
     public function __construct()
     {
-        $this->templatePath = array_map(function ($template) {
-            return storage_path("app/private/templates/$template");
-        }, $this->templatePath);
+        $this->templatePath = array_map(fn($template) => storage_path("app/private/$template"), $this->templatePath);
     }
 
     public function generateBankBillBTGPactualGenerate(Request $request)
