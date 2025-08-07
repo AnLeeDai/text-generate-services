@@ -24,7 +24,6 @@ class FileCheckController extends Controller
             }
 
             return response()->json([
-                'success' => true,
                 'total' => count($fileList),
                 'files' => $fileList
             ]);
@@ -48,7 +47,6 @@ class FileCheckController extends Controller
             }
 
             return response()->json([
-                'success' => true,
                 'message' => 'Tất cả file đã được xóa.'
             ]);
         }
@@ -67,13 +65,11 @@ class FileCheckController extends Controller
             File::delete($generatedPath);
 
             return response()->json([
-                'success' => true,
                 'message' => "File '$fileName' đã được xóa."
             ]);
         }
 
         return response()->json([
-            'success' => false,
             'message' => "File '$fileName' không tồn tại."
         ]);
     }
