@@ -52,13 +52,21 @@ class BankBillController extends Controller
         $outputFilesFailures = [];
 
         foreach ($dataArray as $data) {
+            // Thêm accountName từ fullname
             $data['accountName'] = $data['fullname'];
-            $accountNumber = $data['accountNumber'];
 
-            // Loại bỏ tiền tố "BR" nếu có
+            // Xử lý số tài khoản: Loại bỏ "BR" và hiển thị 6 số đầu và 6 số cuối, phần giữa là "*****"
+            $accountNumber = $data['accountNumber'];
             $accountNumberWithoutPrefix = substr($accountNumber, 2);
-            // Lấy 6 số đầu và 6 số cuối, thay thế phần giữa bằng "*****"
             $formattedAccountNumber = substr($accountNumberWithoutPrefix, 0, 6) . "*****" . substr($accountNumberWithoutPrefix, -6);
+
+            // Tính toán tháng và ngày đầu tháng
+            $statementPeriod = $data['statementPeriod'];
+            $dates = explode(' to ', $statementPeriod);
+            $startDate = Carbon::createFromFormat('d/M/Y', $dates[0]);
+            $month = $startDate->format('M');
+            $day = $startDate->format('j');
+            $daysInMonthFormatted = "$month $day";
 
             if (!file_exists($fileName)) {
                 return response()->json(['error' => "Không tìm thấy file mẫu tại: $fileName"], 400);
@@ -83,9 +91,10 @@ class BankBillController extends Controller
             $templateProcessor->setValue('accountNumber', $formattedAccountNumber);
             $templateProcessor->setValue('statementPeriod', $data['statementPeriod']);
             $templateProcessor->setValue('date', Carbon::now()->format('d/m/Y'));
+            $templateProcessor->setValue('month', $daysInMonthFormatted);
 
-            $sanitizedFilename = str_replace('-', '_', strtolower($data['filename']));
-            $outputFileName = 'btg_pactual_business_' . $sanitizedFilename . '.docx';
+            $sanitizedFilename = str_replace('-', '_', $data['filename']);
+            $outputFileName = "btg_pactual_business_$sanitizedFilename.docx";
             $outputFilePath = storage_path("app/private/generated/$outputFileName");
 
             if (!file_exists(dirname($outputFilePath))) {
@@ -94,13 +103,11 @@ class BankBillController extends Controller
 
             try {
                 $templateProcessor->saveAs($outputFilePath);
-                // Lưu thông tin file thành công vào mảng
                 $outputFilesSuccess[] = [
                     'file' => $outputFileName,
                     'file_url' => url("storage/private/generated/$outputFileName")
                 ];
             } catch (\Exception $e) {
-                // Thêm lỗi vào mảng thất bại nếu không thể lưu tài liệu
                 $outputFilesFailures[] = [
                     'error' => 'Không thể lưu tài liệu đã tạo: ' . $e->getMessage(),
                     'data' => $data
@@ -108,7 +115,6 @@ class BankBillController extends Controller
             }
         }
 
-        // Trả về kết quả
         return response()->json([
             'message' => 'Các hóa đơn ngân hàng đã được tạo thành công.',
             'total' => count($outputFilesSuccess),
