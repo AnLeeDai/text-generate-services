@@ -95,7 +95,7 @@ class BankBillController extends Controller
 
             $sanitizedFilename = str_replace('-', '_', $data['filename']);
             $outputFileName = "btg_pactual_business_$sanitizedFilename.docx";
-            $outputFilePath = storage_path("app/private/generated/$outputFileName");
+            $outputFilePath = public_path("generated/$outputFileName");
 
             if (!file_exists(dirname($outputFilePath))) {
                 mkdir(dirname($outputFilePath), 0755, true);
@@ -105,7 +105,7 @@ class BankBillController extends Controller
                 $templateProcessor->saveAs($outputFilePath);
                 $outputFilesSuccess[] = [
                     'file' => $outputFileName,
-                    'file_url' => url("storage/private/generated/$outputFileName")
+                    'file_url' => url("generated/$outputFileName")
                 ];
             } catch (\Exception $e) {
                 $outputFilesFailures[] = [
