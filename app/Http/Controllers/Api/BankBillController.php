@@ -73,6 +73,7 @@ class BankBillController extends Controller
 
         $outputFilesSuccess = [];
         $outputFilesFailures = [];
+        $generatedFilePaths = [];
 
         foreach ($dataArray as $data) {
             // Tên accountName lấy từ fullname nếu chưa có
@@ -201,8 +202,8 @@ class BankBillController extends Controller
             }
 
             // CheckNo và các check đặc biệt (nếu có), ví dụ minh họa: checkNo1, checkNo2
-            $templateProcessor->setValue("checkNo1", rand(100000, 999999));
-            $templateProcessor->setValue("checkNo2", rand(100000, 999999));
+            $templateProcessor->setValue("checkNo1", rand(1000, 9999));
+            $templateProcessor->setValue("checkNo2", rand(100, 999));
 
             $sanitizedFilename = str_replace('-', '_', $data['filename']);
             $outputFileName = "btg_pactual_business_$sanitizedFilename.docx";
@@ -218,6 +219,7 @@ class BankBillController extends Controller
                     'file' => $outputFileName,
                     'file_url' => url("generated/$outputFileName")
                 ];
+                $generatedFilePaths[] = $outputFilePath;
             } catch (\Exception $e) {
                 $outputFilesFailures[] = [
                     'error' => 'Không thể lưu tài liệu đã tạo: ' . $e->getMessage(),
@@ -226,10 +228,26 @@ class BankBillController extends Controller
             }
         }
 
+        // --- Nén các file đã tạo thành file ZIP ---
+        $zipFileName = 'bank_bills_' . time() . '.zip';
+        $zipFilePath = public_path("generated/$zipFileName");
+        $zip = new \ZipArchive();
+        if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+            foreach ($generatedFilePaths as $filePath) {
+                // Đưa vào ZIP với tên file gốc
+                $zip->addFile($filePath, basename($filePath));
+            }
+            $zip->close();
+            $zipUrl = url("generated/$zipFileName");
+        } else {
+            $zipUrl = null;
+        }
+
         return response()->json([
             'message' => 'Các hóa đơn ngân hàng đã được tạo thành công.',
             'total' => count($outputFilesSuccess),
             'failures' => $outputFilesFailures,
+            'zip_url' => $zipUrl,
             'data' => $outputFilesSuccess,
         ], 201);
     }
