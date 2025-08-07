@@ -45,6 +45,14 @@ class BankBillController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
+        $freeSpace = round(disk_free_space(public_path()) / 1024 / 1024 / 1024, 2);
+
+        $minFreeSpace = 1;
+
+        if ($freeSpace < $minFreeSpace) {
+            return response()->json(['error' => 'Dịch vụ không phản hồi do không đủ dung lượng ổ đĩa để lưu các tệp tin.'], 500);
+        }
+
         $outputFilesSuccess = [];
         $outputFilesFailures = [];
 
@@ -93,11 +101,6 @@ class BankBillController extends Controller
             $sanitizedFilename = str_replace('-', '_', $data['filename']);
             $outputFileName = "btg_pactual_business_$sanitizedFilename.docx";
             $outputFilePath = public_path("generated/$outputFileName");
-
-            // Xóa file cũ trước khi tạo file mới
-            if (file_exists($outputFilePath)) {
-                unlink($outputFilePath);
-            }
 
             if (!file_exists(dirname($outputFilePath))) {
                 mkdir(dirname($outputFilePath), 0755, true);
