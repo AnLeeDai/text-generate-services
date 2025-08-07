@@ -15,16 +15,20 @@ class FileCheckController extends Controller
             $files = File::allFiles($generatedPath);
 
             $fileList = [];
+            $totalSize = 0;
             foreach ($files as $file) {
+                $size = $file->getSize();
+                $totalSize += $size;
                 $fileList[] = [
                     'name' => $file->getRelativePathname(),
-                    'size' => $this->humanFileSize($file->getSize()),
+                    'size' => $this->humanFileSize($size),
                     'modified' => date('Y-m-d H:i:s', $file->getMTime()),
                 ];
             }
 
             return response()->json([
                 'total' => count($fileList),
+                'total_size' => $this->humanFileSize($totalSize),
                 'files' => $fileList
             ]);
         }
