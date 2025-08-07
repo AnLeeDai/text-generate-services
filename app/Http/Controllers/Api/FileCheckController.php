@@ -30,7 +30,6 @@ class FileCheckController extends Controller
         }
 
         return response()->json([
-            'success' => false,
             'message' => 'Thư mục public/generated không tồn tại.'
         ]);
     }
@@ -52,7 +51,6 @@ class FileCheckController extends Controller
         }
 
         return response()->json([
-            'success' => false,
             'message' => 'Thư mục public/generated không tồn tại.'
         ]);
     }
