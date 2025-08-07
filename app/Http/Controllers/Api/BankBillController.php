@@ -12,7 +12,6 @@ class BankBillController extends Controller
 {
     private $templatePath = [
         'btg_pactual' => 'btg_pactual_bank_bill_template.docx',
-        'demo2' => 'demo2.docx',
     ];
 
     public function __construct()
