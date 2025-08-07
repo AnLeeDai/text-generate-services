@@ -13,6 +13,7 @@
 .phpunit.cache
 .vscode/
 .zed/
+generated/
 
 # Ignore auth and node modules
 /auth.json
