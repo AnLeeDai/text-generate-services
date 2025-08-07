@@ -12,14 +12,11 @@ class BankBillController extends Controller
 {
     private $templatePath = [
         'btg_pactual' => 'btg_pactual_bank_bill_template.docx',
-        'demo2' => 'demo2.docx',
     ];
 
     public function __construct()
     {
-        $this->templatePath = array_map(function ($template) {
-            return storage_path("app/private/templates/$template");
-        }, $this->templatePath);
+        $this->templatePath = array_map(fn($template) => storage_path("app/private/$template"), $this->templatePath);
     }
 
     public function generateBankBillBTGPactualGenerate(Request $request)
@@ -96,11 +93,6 @@ class BankBillController extends Controller
             $sanitizedFilename = str_replace('-', '_', $data['filename']);
             $outputFileName = "btg_pactual_business_$sanitizedFilename.docx";
             $outputFilePath = public_path("generated/$outputFileName");
-
-            // Xóa file cũ trước khi tạo file mới
-            if (file_exists($outputFilePath)) {
-                unlink($outputFilePath);
-            }
 
             if (!file_exists(dirname($outputFilePath))) {
                 mkdir(dirname($outputFilePath), 0755, true);
