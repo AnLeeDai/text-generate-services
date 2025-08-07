@@ -24,7 +24,6 @@ class BankBillController extends Controller
         $fileName = $this->templatePath['btg_pactual'];
         $dataArray = $request->all();
 
-        // Nếu statementPeriod thiếu thì tự động gán ngẫu nhiên 2 tháng gần nhất TRƯỚC validate
         foreach ($dataArray as &$data) {
             if (empty($data['statementPeriod'])) {
                 $now = Carbon::now();
@@ -33,7 +32,6 @@ class BankBillController extends Controller
                     $now
                 ];
                 $chosenMonth = $months[rand(0, 1)];
-
                 if ($chosenMonth->isSameMonth($now)) {
                     $startDay = rand(1, $now->day - 10 > 1 ? $now->day - 10 : 1);
                     $endDay = rand($startDay + 1, $now->day);
@@ -44,13 +42,11 @@ class BankBillController extends Controller
                 }
                 $start = Carbon::create($chosenMonth->year, $chosenMonth->month, $startDay);
                 $end = Carbon::create($chosenMonth->year, $chosenMonth->month, $endDay);
-
                 $data['statementPeriod'] = $start->format('d/M/Y') . ' to ' . $end->format('d/M/Y');
             }
         }
         unset($data);
 
-        // Validate đầu vào như yêu cầu KHÔNG thay đổi
         $validator = Validator::make($dataArray, [
             '*.filename' => 'required|string',
             '*.fullname' => 'required|string',
@@ -72,19 +68,14 @@ class BankBillController extends Controller
         }
 
         $outputFilesSuccess = [];
-        $outputFilesFailures = [];
         $generatedFilePaths = [];
 
-        foreach ($dataArray as $data) {
-            // Tên accountName lấy từ fullname nếu chưa có
+        foreach ($dataArray as $dataIdx => $data) {
             $data['accountName'] = $data['accountName'] ?? $data['fullname'];
-
-            // Xử lý số tài khoản: Loại bỏ "BR" và hiển thị 6 số đầu, 6 số cuối, giữa là "*****"
             $accountNumber = $data['accountNumber'];
             $accountNumberWithoutPrefix = preg_replace('/^BR/', '', $accountNumber);
             $formattedAccountNumber = substr($accountNumberWithoutPrefix, 0, 6) . "*****" . substr($accountNumberWithoutPrefix, -6);
 
-            // Tính toán tháng và ngày đầu tháng cho phần "Balance on Jun 7"
             $statementPeriod = $data['statementPeriod'];
             $datesRange = explode(' to ', $statementPeriod);
             $startDate = Carbon::createFromFormat('d/M/Y', $datesRange[0]);
@@ -100,14 +91,12 @@ class BankBillController extends Controller
             try {
                 $templateProcessor = new TemplateProcessor($fileName);
             } catch (\Exception $e) {
-                $outputFilesFailures[] = [
+                return response()->json([
                     'error' => 'Không thể tải mẫu: ' . $e->getMessage(),
                     'data' => $data
-                ];
-                continue;
+                ], 500);
             }
 
-            // --- SET THÔNG TIN CHUNG ---
             $templateProcessor->setValue('fullname', mb_strtoupper($data['fullname']));
             $templateProcessor->setValue('addressOne', $data['addressOne']);
             $templateProcessor->setValue('addressTwo', $data['addressTwo']);
@@ -117,93 +106,89 @@ class BankBillController extends Controller
             $templateProcessor->setValue('date', Carbon::now()->format('d/m/Y'));
             $templateProcessor->setValue('month', $daysInMonthFormatted);
 
-            // --- TỰ ĐỘNG XỬ LÝ CÁC PLACEHOLDER CỦA ACCOUNT SUMMARY (totalOn, totalIn, totalOut, ebBal) ---
-            $totalOn = rand(1000000, 5000000) / 100;    // VD: 27,584.38
-            $totalIn = rand(300000, 1500000) / 100;
-            $totalOut = rand(200000, 1400000) / 100;
-            $ebBal = $totalOn + $totalIn - $totalOut;
+            $totalOn = 27563.55;
+            $templateProcessor->setValue('balance1', number_format($totalOn, 2, '.', ','));
 
-            // Đặt dấu $ phía trước và sử dụng dấu chấm phân cách phần thập phân, dấu phẩy cho phần nghìn
-            $templateProcessor->setValue('totalOn', '$' . number_format($totalOn, 2, '.', ','));
-            $templateProcessor->setValue('totalIn', '$' . number_format($totalIn, 2, '.', ','));
-            $templateProcessor->setValue('totalOut', '$' . number_format($totalOut, 2, '.', ','));
-            $templateProcessor->setValue('balanceOn', '$' . number_format($ebBal, 2, '.', ','));
-            $templateProcessor->setValue('ebBal', number_format($ebBal, 2, '.', ','));
-
-            // --- XỬ LÝ DANH SÁCH NGÀY CHO CỘT DATE THEO ĐÚNG ĐỊNH DẠNG MM/DD ---
-            $maxRows = 11;
-            $allDays = [];
-            $period = Carbon::parse($startDate)->daysUntil($endDate);
+            $numTransactions = 11;
+            $allDates = [];
+            $period = Carbon::parse($startDate)->daysUntil($endDate->copy()->addDay());
             foreach ($period as $dayObj) {
-                $allDays[] = $dayObj->copy();
+                $allDates[] = $dayObj->copy();
             }
-            // Chọn ngẫu nhiên $maxRows ngày, không trùng, sort tăng dần
-            if (count($allDays) > $maxRows) {
-                $chosenKeys = array_rand($allDays, $maxRows);
+            if (count($allDates) >= $numTransactions) {
+                $chosenKeys = array_rand($allDates, $numTransactions);
                 if (!is_array($chosenKeys))
                     $chosenKeys = [$chosenKeys];
                 $chosenDays = [];
                 foreach ($chosenKeys as $k)
-                    $chosenDays[] = $allDays[$k];
+                    $chosenDays[] = $allDates[$k];
                 usort($chosenDays, fn($a, $b) => $a->timestamp - $b->timestamp);
             } else {
-                $chosenDays = $allDays;
-            }
-
-            // --- TỰ ĐỘNG XỬ LÝ GIAO DỊCH BẢNG (PLACEHOLDER date1, withdra1, deposit1, balance1, ...)
-            $transactions = [];
-            $balance = $totalOn;
-            for ($i = 0; $i < $maxRows; $i++) {
-                $dateValue = isset($chosenDays[$i]) ? $chosenDays[$i]->format('m/d') : '';
-                $type = rand(1, 3);
-                $withdraw = '';
-                $deposit = '';
-                $desc = '';
-                if ($type == 1) {
-                    $withdraw = rand(1000, 2000000) / 100; // ví dụ 253.68
-                    $balance -= $withdraw;
-                    $desc = "Payment #" . rand(1000, 9999);
-                } elseif ($type == 2) {
-                    $deposit = rand(1000, 3000000) / 100;
-                    $balance += $deposit;
-                    $desc = "Deposit #" . rand(1000, 9999);
-                } else {
-                    $withdraw = rand(500, 1000000) / 100;
-                    $deposit = rand(500, 2000000) / 100;
-                    $desc = "Transfer #" . rand(100, 999);
-                    $balance = $balance - $withdraw + $deposit;
+                $chosenDays = [];
+                for ($i = 0; $i < $numTransactions; $i++) {
+                    $offset = intval($i * (count($allDates) - 1) / ($numTransactions - 1));
+                    $chosenDays[] = $allDates[$offset];
                 }
-                $transactions[] = [
-                    'date' => $dateValue,
-                    'desc' => $desc,
-                    'withdraw' => $withdraw !== '' ? number_format($withdraw, 2, '.', ',') : '',
-                    'deposit' => $deposit !== '' ? number_format($deposit, 2, '.', ',') : '',
-                    'balance' => number_format($balance, 2, '.', ',')
-                ];
             }
+            $dates = array_map(fn($d) => $d->format('m/d'), $chosenDays);
 
-            // Gán giá trị từng placeholder theo template (date1, withdra1, deposit1, balance1 ...)
-            for ($i = 1; $i <= $maxRows; $i++) {
-                $idx = $i - 1;
-                $templateProcessor->setValue("date$i", $transactions[$idx]['date']);
-                $templateProcessor->setValue("withdra$i", $transactions[$idx]['withdraw']);
-                $templateProcessor->setValue("deposit$i", $transactions[$idx]['deposit']);
-                $templateProcessor->setValue("balance" . ($i + 1), $transactions[$idx]['balance']);
+            $withdra = [];
+            $deposit = [];
+            $withdra[1] = "75.99";
+            $withdra[2] = "253.68";
+            $withdra[3] = "3894.75";
+            $withdra[4] = "243.36";
+            $withdra[5] = "750.00";
+            $withdra[6] = number_format(rand(100, 1000) / 100, 2, '.', ',');
+            $withdra[7] = number_format(rand(100, 1000) / 100, 2, '.', ',');
+
+            $deposit[1] = "456.84";
+            $deposit[2] = "33581.98";
+            $deposit[3] = "456.84";
+            $deposit[4] = "5891.26";
+
+            $checkNo1 = 5753;
+            $checkNo2 = 220;
+
+            $rows = [
+                [1, 1, 0, 0, "Internet Bill"],
+                [2, 2, 0, 0, "Electric Bill"],
+                [3, 0, 1, 1, "Check No. $checkNo1\nPayment from Lisa Williams"],
+                [4, 0, 2, 0, "Deposit from Credit Card Processor"],
+                [5, 3, 0, 0, "Payroll Run"],
+                [6, 4, 0, 0, "Debit Transaction\nMain Office Wholesale"],
+                [7, 5, 3, 0, "Rent Bill"],
+                [8, 0, 0, 2, "Check No. $checkNo2\nPayment From Mark Moore"],
+                [9, 6, 0, 0, "Payroll Run"],
+                [10, 0, 4, 0, "Deposit"],
+                [11, 7, 0, 0, "Debit Transaction\nABC Business Supplies"],
+            ];
+
+            $balance = $totalOn;
+            for ($i = 1; $i <= 11; $i++) {
+                $templateProcessor->setValue("date$i", $dates[$i - 1]);
+                $w = $rows[$i - 1][1] ? $withdra[$rows[$i - 1][1]] : number_format(rand(100, 1000) / 100, 2, '.', ',');
+                $templateProcessor->setValue("withdra$i", $w);
+                $d = $rows[$i - 1][2] ? $deposit[$rows[$i - 1][2]] : number_format(rand(100, 1000) / 100, 2, '.', ',');
+                $templateProcessor->setValue("deposit$i", $d);
+                $balance = $balance - floatval(str_replace(',', '', $w)) + floatval(str_replace(',', '', $d));
+                $templateProcessor->setValue("balance" . ($i + 1), number_format($balance, 2, '.', ','));
             }
-            // Số dư đầu kỳ là balance1, số dư cuối kỳ là ebBal (đã gán ở trên)
-            $templateProcessor->setValue('balance1', number_format($totalOn, 2, '.', ','));
+            $templateProcessor->setValue('ebBal', number_format($balance, 2, '.', ','));
+            $templateProcessor->setValue("checkNo1", $checkNo1);
+            $templateProcessor->setValue("checkNo2", $checkNo2);
 
-            // Với các placeholder không sử dụng thì gán rỗng
-            for ($i = $maxRows + 1; $i <= 20; $i++) {
-                $templateProcessor->setValue("date$i", '');
-                $templateProcessor->setValue("withdra$i", '');
-                $templateProcessor->setValue("deposit$i", '');
-                $templateProcessor->setValue("balance$i", '');
+            $totalMoneyIn = 0;
+            $totalMoneyOut = 0;
+            for ($i = 1; $i <= 11; $i++) {
+                $w = $rows[$i - 1][1] ? floatval(str_replace(',', '', $withdra[$rows[$i - 1][1]])) : 0;
+                $d = $rows[$i - 1][2] ? floatval(str_replace(',', '', $deposit[$rows[$i - 1][2]])) : 0;
+                $totalMoneyIn += $d;
+                $totalMoneyOut += $w;
             }
-
-            // CheckNo và các check đặc biệt (nếu có), ví dụ minh họa: checkNo1, checkNo2
-            $templateProcessor->setValue("checkNo1", rand(1000, 9999));
-            $templateProcessor->setValue("checkNo2", rand(100, 999));
+            $templateProcessor->setValue('totalIn', 'R$' . number_format($totalMoneyIn, 2, '.', ','));
+            $templateProcessor->setValue('totalOut', 'R$' . number_format($totalMoneyOut, 2, '.', ','));
+            $templateProcessor->setValue('balanceOn', 'R$' . number_format($balance, 2, '.', ','));
 
             $sanitizedFilename = str_replace('-', '_', $data['filename']);
             $outputFileName = "btg_pactual_business_$sanitizedFilename.docx";
@@ -221,20 +206,18 @@ class BankBillController extends Controller
                 ];
                 $generatedFilePaths[] = $outputFilePath;
             } catch (\Exception $e) {
-                $outputFilesFailures[] = [
+                return response()->json([
                     'error' => 'Không thể lưu tài liệu đã tạo: ' . $e->getMessage(),
                     'data' => $data
-                ];
+                ], 500);
             }
         }
 
-        // --- Nén các file đã tạo thành file ZIP ---
         $zipFileName = 'bank_bills_' . time() . '.zip';
         $zipFilePath = public_path("generated/$zipFileName");
         $zip = new \ZipArchive();
         if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
             foreach ($generatedFilePaths as $filePath) {
-                // Đưa vào ZIP với tên file gốc
                 $zip->addFile($filePath, basename($filePath));
             }
             $zip->close();
@@ -246,7 +229,6 @@ class BankBillController extends Controller
         return response()->json([
             'message' => 'Các hóa đơn ngân hàng đã được tạo thành công.',
             'total' => count($outputFilesSuccess),
-            'failures' => $outputFilesFailures,
             'zip_url' => $zipUrl,
             'data' => $outputFilesSuccess,
         ], 201);
