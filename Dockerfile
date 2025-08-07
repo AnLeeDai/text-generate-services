@@ -1,37 +1,23 @@
-# Use official PHP image with necessary extensions
-FROM php:8.3-fpm
+FROM php:8.2-fpm
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    unzip \
-    libsqlite3-dev \
-    && docker-php-ext-install pdo pdo_sqlite
-
-# Set working directory
 WORKDIR /var/www
 
-# Copy composer installer and install composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+RUN apt-get update && apt-get install -y \
+    zip unzip curl git libxml2-dev libzip-dev libpng-dev libjpeg-dev libonig-dev \
+    sqlite3 libsqlite3-dev
 
-# Copy application files
-COPY . .
+RUN docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip
 
-# Install PHP dependencies
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Set permissions for Laravel
-RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+COPY . /var/www
+COPY --chown=www-data:www-data . /var/www
 
-# Expose port 8000
+RUN chmod -R 755 /var/www
+RUN composer install
+
+COPY .env.example .env
+RUN php artisan key:generate
+
 EXPOSE 8000
-
-# Set environment variables for SQLite
-ENV DB_CONNECTION=sqlite
-ENV DB_DATABASE=/var/www/database/database.sqlite
-
-# Create SQLite database file
-RUN mkdir -p /var/www/database && touch /var/www/database/database.sqlite && chown -R www-data:www-data /var/www/database
-
-# Start Laravel server
-CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8000
+CMD php artisan serve --host=0.0.0.0 --port=8000
