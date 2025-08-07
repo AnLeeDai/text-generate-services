@@ -97,6 +97,11 @@ class BankBillController extends Controller
             $outputFileName = "btg_pactual_business_$sanitizedFilename.docx";
             $outputFilePath = public_path("generated/$outputFileName");
 
+            // Xóa file cũ trước khi tạo file mới
+            if (file_exists($outputFilePath)) {
+                unlink($outputFilePath);
+            }
+
             if (!file_exists(dirname($outputFilePath))) {
                 mkdir(dirname($outputFilePath), 0755, true);
             }
