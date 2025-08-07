@@ -84,10 +84,10 @@ class BankBillController extends Controller
             }
 
             // Thay thế các giá trị trong template
-            $templateProcessor->setValue('fullname', $data['fullname']);
+            $templateProcessor->setValue('fullname', mb_strtoupper($data['fullname']));
             $templateProcessor->setValue('addressOne', $data['addressOne']);
             $templateProcessor->setValue('addressTwo', $data['addressTwo']);
-            $templateProcessor->setValue('accountName', $data['accountName']);
+            $templateProcessor->setValue('accountName', mb_strtoupper($data['accountName']));
             $templateProcessor->setValue('accountNumber', $formattedAccountNumber);
             $templateProcessor->setValue('statementPeriod', $data['statementPeriod']);
             $templateProcessor->setValue('date', Carbon::now()->format('d/m/Y'));
