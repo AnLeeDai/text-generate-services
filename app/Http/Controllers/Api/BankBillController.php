@@ -32,7 +32,7 @@ class BankBillController extends Controller
             '*.addressTwo' => 'required|string',
             '*.accountName' => 'string',
             '*.accountNumber' => 'required|string',
-            '*.statementPeriod' => 'required|string',
+            '*.statementPeriod' => 'string|nullable',
         ], [
             '*.filename.required' => 'Tên file là bắt buộc',
             '*.fullname.required' => 'Họ và tên là bắt buộc',
@@ -57,10 +57,28 @@ class BankBillController extends Controller
             $accountNumberWithoutPrefix = substr($accountNumber, 2);
             $formattedAccountNumber = substr($accountNumberWithoutPrefix, 0, 6) . "*****" . substr($accountNumberWithoutPrefix, -6);
 
+            // Nếu không có statementPeriod, tự động chọn trong 2 tháng gần nhất
+            if (empty($data['statementPeriod'])) {
+                $startDate = Carbon::now()->subMonth()->startOfMonth();
+                $endDate = $startDate->copy()->endOfMonth();
+                $data['statementPeriod'] = $startDate->format('d/M/Y') . ' to ' . $endDate->format('d/M/Y');
+            } else {
+                // Kiểm tra và định dạng lại date nếu không đúng
+                $dates = explode(' to ', $data['statementPeriod']);
+                if (count($dates) == 2) {
+                    try {
+                        $startDate = Carbon::createFromFormat('d/M/Y', $dates[0]);
+                        $endDate = Carbon::createFromFormat('d/M/Y', $dates[1]);
+                        $data['statementPeriod'] = $startDate->format('d/M/Y') . ' to ' . $endDate->format('d/M/Y');
+                    } catch (\Exception $e) {
+                        return response()->json(['error' => 'Định dạng ngày không hợp lệ. Vui lòng sử dụng dd/Mon/yyyy'], 400);
+                    }
+                } else {
+                    return response()->json(['error' => 'statementPeriod phải có định dạng dd/Mon/yyyy to dd/Mon/yyyy'], 400);
+                }
+            }
+
             // Tính toán tháng và ngày đầu tháng
-            $statementPeriod = $data['statementPeriod'];
-            $dates = explode(' to ', $statementPeriod);
-            $startDate = Carbon::createFromFormat('d/M/Y', $dates[0]);
             $month = $startDate->format('M');
             $day = $startDate->format('j');
             $daysInMonthFormatted = "$month $day";

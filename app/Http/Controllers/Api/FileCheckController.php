@@ -10,16 +10,21 @@ class FileCheckController extends Controller
     public function listFiles()
     {
         $generatedPath = public_path('generated');
+        $generatedUrl = asset('generated');
 
         if (File::exists($generatedPath)) {
             $files = File::allFiles($generatedPath);
 
             $fileList = [];
             foreach ($files as $file) {
+                $relativePath = $file->getRelativePathname();
+                $downloadLink = $generatedUrl . '/' . str_replace('\\', '/', $relativePath);
+
                 $fileList[] = [
-                    'name' => $file->getRelativePathname(),
+                    'name' => $relativePath,
                     'size' => $this->humanFileSize($file->getSize()),
                     'modified' => date('Y-m-d H:i:s', $file->getMTime()),
+                    'download_link' => $downloadLink,
                 ];
             }
 
