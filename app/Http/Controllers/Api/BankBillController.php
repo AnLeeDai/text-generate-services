@@ -104,12 +104,10 @@ class BankBillController extends Controller
             $templateProcessor->setValue('accountNumber', $maskedNumber);
             $templateProcessor->setValue('statementPeriod', $statementPeriod);
 
-            // 2. Map Account Summary
-            // Số dư đầu kỳ: random hợp lý hoặc cố định sát mẫu
-            $totalOn = rand(25500, 29500) + rand(0, 99) / 100; // 25,500.00 - 29,500.99
-
-            // Giao dịch mẫu sát thực tế file ảnh
-            $templateTransactions = [
+            // === ACCOUNT SUMMARY DATA (bám sát mẫu, động theo period) ===
+            $totalOn = 28375.76;
+            // Giao dịch mẫu giống mẫu ảnh số 2, nhưng số ngày lấy động trong period
+            $transactions = [
                 [
                     'desc' => 'Internet Bill',
                     'withdra' => 75.99,
@@ -125,8 +123,8 @@ class BankBillController extends Controller
                 [
                     'desc' => 'Check No. %check1%',
                     'withdra' => 0,
-                    'deposit' => 456.84,
-                    'note' => 'Payment from Lisa Williams',
+                    'deposit' => 0,
+                    'note' => 'Payment from Check No. %check1note%',
                 ],
                 [
                     'desc' => 'Deposit from Credit Card Processor',
@@ -136,101 +134,120 @@ class BankBillController extends Controller
                 ],
                 [
                     'desc' => 'Payroll Run',
-                    'withdra' => 3894.75,
+                    'withdra' => 0,
                     'deposit' => 0,
                     'note' => '',
                 ],
                 [
                     'desc' => 'Debit Transaction',
-                    'withdra' => 243.36,
+                    'withdra' => 0,
                     'deposit' => 0,
-                    'note' => 'Main Office Wholesale',
+                    'note' => 'Debit Transaction',
                 ],
                 [
                     'desc' => 'Rent Bill',
-                    'withdra' => 750.00,
-                    'deposit' => 268.84,
+                    'withdra' => 3894.75,
+                    'deposit' => 456.84,
                     'note' => '',
                 ],
                 [
                     'desc' => 'Check No. %check2%',
                     'withdra' => 0,
                     'deposit' => 0,
-                    'note' => 'Payment from Mark Moore',
+                    'note' => 'Check No. %check2note%',
                 ],
                 [
                     'desc' => 'Payroll Run',
-                    'withdra' => 3743.23,
+                    'withdra' => 243.36,
                     'deposit' => 0,
                     'note' => '',
                 ],
                 [
                     'desc' => 'Deposit',
                     'withdra' => 0,
-                    'deposit' => 3656.45,
+                    'deposit' => 5891.26,
                     'note' => '',
                 ],
                 [
                     'desc' => 'Debit Transaction',
-                    'withdra' => 1548.96,
+                    'withdra' => 750.00,
                     'deposit' => 0,
-                    'note' => 'ABC Business Supplies',
+                    'note' => 'Debit Transaction',
                 ],
             ];
 
-            // Random ngày giao dịch thực sự trong khoảng period (không trùng, sắp xếp tăng dần)
-            $periodStart = $startDate->copy();
-            $periodEnd = $endDate->copy();
-            $daysRange = $periodEnd->diffInDays($periodStart);
-
+            // Ngày động: RANDOM KHÔNG TRÙNG trong khoảng period, có thể không tăng dần
+            $numTrans = count($transactions);
+            $periodDays = $endDate->diffInDays($startDate);
+            $availableDayIndexes = range(0, $periodDays);
+            shuffle($availableDayIndexes);
             $transactionDates = [];
-            while (count($transactionDates) < count($templateTransactions)) {
-                $randDay = $periodStart->copy()->addDays(rand(0, $daysRange))->format('m/d');
-                if (!in_array($randDay, $transactionDates)) {
-                    $transactionDates[] = $randDay;
-                }
+            for ($i = 0; $i < $numTrans; $i++) {
+                $transactionDates[] = $startDate->copy()->addDays($availableDayIndexes[$i])->format('m/d');
             }
-            sort($transactionDates);
 
-            // Random check number
-            $check1 = rand(1000, 9999);
-            $check2 = rand(100, 999);
+            // Random check number động mỗi lần xuất file
+            $checkNoRand1 = rand(9000, 9999);
+            $checkNoRand2 = rand(100, 999);
 
-            // Tính tổng tiền vào, tổng tiền ra theo giao dịch thực tế
+            // Tổng tiền vào/ra: lấy thực tế từ danh sách giao dịch
             $totalIn = 0;
             $totalOut = 0;
-            foreach ($templateTransactions as $t) {
+            foreach ($transactions as $t) {
                 $totalIn += $t['deposit'];
                 $totalOut += $t['withdra'];
             }
             $ebBal = $totalOn + $totalIn - $totalOut;
 
+            // Map account summary
             $templateProcessor->setValue('month', $month);
             $templateProcessor->setValue('totalOn', number_format($totalOn, 2, '.', ','));
             $templateProcessor->setValue('totalIn', number_format($totalIn, 2, '.', ','));
             $templateProcessor->setValue('totalOut', number_format($totalOut, 2, '.', ','));
             $templateProcessor->setValue('ebBal', number_format($ebBal, 2, '.', ','));
 
-            // 3. Map Transactions (theo ngày random, sát thực tế)
+            // 3. Map Transactions
             $balance = $totalOn;
             $templateProcessor->setValue("balance1", number_format($totalOn, 2, '.', ','));
-            foreach ($templateTransactions as $i => $t) {
+
+            foreach ($transactions as $i => $t) {
                 $date = $transactionDates[$i];
-                // Thay check number vào description nếu có
-                $desc = str_replace(['%check1%', '%check2%'], [$check1, $check2], $t['desc']);
+                $desc = $t['desc'];
+                $note = $t['note'];
+
+                // Thay số check động vào desc/note nếu có
+                $desc = str_replace(
+                    ['%check1%', '%check2%'],
+                    [$checkNoRand1, $checkNoRand2],
+                    $desc
+                );
+                $note = str_replace(
+                    ['%check1note%', '%check2note%'],
+                    [$checkNoRand1, $checkNoRand2],
+                    $note
+                );
+
                 $withdra = $t['withdra'] ? number_format($t['withdra'], 2, '.', ',') : '';
                 $deposit = $t['deposit'] ? number_format($t['deposit'], 2, '.', ',') : '';
                 $balance = $balance + $t['deposit'] - $t['withdra'];
 
-                $templateProcessor->setValue("date" . ($i + 1), $date);
-                $templateProcessor->setValue("desc" . ($i + 1), $desc);
-                $templateProcessor->setValue("withdra" . ($i + 1), $withdra);
-                $templateProcessor->setValue("deposit" . ($i + 1), $deposit);
-                $templateProcessor->setValue("balance" . ($i + 2), number_format($balance, 2, '.', ','));
+                $templateProcessor->setValue("date".($i+1), $date);
+                $templateProcessor->setValue("desc".($i+1), $desc);
+                $templateProcessor->setValue("withdra".($i+1), $withdra);
+                $templateProcessor->setValue("deposit".($i+1), $deposit);
+                $templateProcessor->setValue("balance".($i+2), number_format($balance, 2, '.', ','));
 
-                // Map note nếu có
-                if ($t['note']) {
-                    $templateProcessor->setValue("note" . ($i + 1), $t['note']);
+                // Chỉ map note nếu là Check No hoặc Debit Transaction
+                if (
+                    stripos($desc, 'check no') !== false ||
+                    stripos($desc, 'debit transaction') !== false
+                ) {
+                    if ($note) {
+                        $templateProcessor->setValue("note".($i+1), $note);
+                    }
+                } else {
+                    // Xóa hoặc để trống note nếu không phải 2 loại trên
+                    $templateProcessor->setValue("note".($i+1), '');
                 }
             }
             // Số dư cuối kỳ
