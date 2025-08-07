@@ -137,6 +137,7 @@ class BankBillController extends Controller
 
         $outputFilesSuccess = [];
         $outputFilesFailures = [];
+        $generatedFilePaths = [];
 
         foreach ($dataArray as $data) {
             $data['accountName'] = $data['fullname'];
@@ -247,6 +248,7 @@ class BankBillController extends Controller
                     'file' => $outputFileName,
                     'file_url' => url("generated/$outputFileName")
                 ];
+                $generatedFilePaths[] = $outputFilePath;
             } catch (\Exception $e) {
                 $outputFilesFailures[] = [
                     'error' => 'Không thể lưu tài liệu đã tạo: ' . $e->getMessage(),
@@ -255,11 +257,31 @@ class BankBillController extends Controller
             }
         }
 
+        $zipFileName = null;
+        $zipFileUrl = null;
+        if (count($generatedFilePaths) > 0) {
+            $zipFileName = 'generated/btg_pactual_bills_' . date('Ymd_His') . '.zip';
+            $zipFilePath = public_path($zipFileName);
+
+            $zip = new \ZipArchive();
+            if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+                foreach ($generatedFilePaths as $filePath) {
+                    if (file_exists($filePath)) {
+                        $localName = basename($filePath);
+                        $zip->addFile($filePath, $localName);
+                    }
+                }
+                $zip->close();
+                $zipFileUrl = url($zipFileName);
+            }
+        }
+
         return response()->json([
             'message' => 'Các hóa đơn ngân hàng đã được tạo thành công.',
             'total' => count($outputFilesSuccess),
             'failures' => $outputFilesFailures,
-            'data' => $outputFilesSuccess,
+            'zip_download_url' => $zipFileUrl,
+            'data' => $outputFilesSuccess
         ], 201);
     }
 }
