@@ -1,5 +1,5 @@
-# Use official PHP image with necessary extensions
-FROM php:8.3-fpm
+# Use official PHP image with Apache
+FROM php:8.3-apache
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -8,8 +8,11 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     && docker-php-ext-install pdo pdo_sqlite
 
+# Enable Apache mod_rewrite
+RUN a2enmod rewrite
+
 # Set working directory
-WORKDIR /var/www
+WORKDIR /var/www/html
 
 # Copy composer installer and install composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -21,17 +24,20 @@ COPY . .
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader
 
 # Set permissions for Laravel
-RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
-
-# Expose port 8000
-EXPOSE 8000
+RUN chown -R www-data:www-data storage bootstrap/cache
 
 # Set environment variables for SQLite
 ENV DB_CONNECTION=sqlite
-ENV DB_DATABASE=/var/www/database/database.sqlite
+ENV DB_DATABASE=/var/www/html/database/database.sqlite
 
 # Create SQLite database file
-RUN mkdir -p /var/www/database && touch /var/www/database/database.sqlite && chown -R www-data:www-data /var/www/database
+RUN mkdir -p database && touch database/database.sqlite && chown -R www-data:www-data database
 
-# Start Laravel server
-CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8000
+# Configure Apache DocumentRoot for Laravel's public directory
+RUN sed -i 's|DocumentRoot /var/www/html|DocumentRoot /var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
+
+# Expose port 80
+EXPOSE 80
+
+# Run migrations and start Apache
+CMD php artisan migrate --force && apache2-foreground
