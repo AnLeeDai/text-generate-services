@@ -80,6 +80,8 @@ class BankBillController extends Controller
 
             // Month cho summary
             $month = $startDate->format('M');
+            $year = $startDate->format('Y');
+            $fixedMonth = $startDate->format('m');
 
             if (!file_exists($fileName)) {
                 $outputFilesFailures[] = ['error' => "Không tìm thấy file mẫu tại: $fileName", 'data' => $data];
@@ -104,9 +106,8 @@ class BankBillController extends Controller
             $templateProcessor->setValue('accountNumber', $maskedNumber);
             $templateProcessor->setValue('statementPeriod', $statementPeriod);
 
-            // === ACCOUNT SUMMARY DATA (bám sát mẫu, động theo period) ===
+            // === ACCOUNT SUMMARY DATA ===
             $totalOn = 28375.76;
-            // Giao dịch mẫu giống mẫu ảnh số 2, nhưng số ngày lấy động trong period
             $transactions = [
                 [
                     'desc' => 'Internet Bill',
@@ -176,14 +177,19 @@ class BankBillController extends Controller
                 ],
             ];
 
-            // Ngày động: RANDOM KHÔNG TRÙNG trong khoảng period, có thể không tăng dần
+            // ======= Generate RANDOM day (ngày không lặp, tháng giữ nguyên) =======
             $numTrans = count($transactions);
-            $periodDays = $endDate->diffInDays($startDate);
-            $availableDayIndexes = range(0, $periodDays);
-            shuffle($availableDayIndexes);
+            $startDay = intval($startDate->format('d'));
+            $endDay = intval($endDate->format('d'));
+            $dayRange = range($startDay, $endDay);
+            // Nếu số giao dịch nhiều hơn số ngày thì chỉ lấy tối đa số ngày có thể
+            shuffle($dayRange);
+            $pickDays = array_slice($dayRange, 0, $numTrans);
+
+            // Map sang định dạng MM/DD
             $transactionDates = [];
             for ($i = 0; $i < $numTrans; $i++) {
-                $transactionDates[] = $startDate->copy()->addDays($availableDayIndexes[$i])->format('m/d');
+                $transactionDates[] = $fixedMonth . '/' . str_pad($pickDays[$i], 2, '0', STR_PAD_LEFT);
             }
 
             // Random check number động mỗi lần xuất file
