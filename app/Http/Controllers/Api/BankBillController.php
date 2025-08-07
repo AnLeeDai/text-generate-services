@@ -105,10 +105,104 @@ class BankBillController extends Controller
             $templateProcessor->setValue('statementPeriod', $statementPeriod);
 
             // 2. Map Account Summary
-            // Random số dư và tổng cộng cho đẹp
-            $totalOn = rand(2000000, 3000000) / 100; // Số dư đầu kỳ
-            $totalIn = rand(1000000, 2000000) / 100; // Tổng tiền vào
-            $totalOut = rand(800000, 1500000) / 100;  // Tổng tiền ra
+            // Số dư đầu kỳ: random hợp lý hoặc cố định sát mẫu
+            $totalOn = rand(25500, 29500) + rand(0, 99) / 100; // 25,500.00 - 29,500.99
+
+            // Giao dịch mẫu sát thực tế file ảnh
+            $templateTransactions = [
+                [
+                    'desc' => 'Internet Bill',
+                    'withdra' => 75.99,
+                    'deposit' => 0,
+                    'note' => '',
+                ],
+                [
+                    'desc' => 'Electric Bill',
+                    'withdra' => 253.68,
+                    'deposit' => 0,
+                    'note' => '',
+                ],
+                [
+                    'desc' => 'Check No. %check1%',
+                    'withdra' => 0,
+                    'deposit' => 456.84,
+                    'note' => 'Payment from Lisa Williams',
+                ],
+                [
+                    'desc' => 'Deposit from Credit Card Processor',
+                    'withdra' => 0,
+                    'deposit' => 5891.26,
+                    'note' => '',
+                ],
+                [
+                    'desc' => 'Payroll Run',
+                    'withdra' => 3894.75,
+                    'deposit' => 0,
+                    'note' => '',
+                ],
+                [
+                    'desc' => 'Debit Transaction',
+                    'withdra' => 243.36,
+                    'deposit' => 0,
+                    'note' => 'Main Office Wholesale',
+                ],
+                [
+                    'desc' => 'Rent Bill',
+                    'withdra' => 750.00,
+                    'deposit' => 268.84,
+                    'note' => '',
+                ],
+                [
+                    'desc' => 'Check No. %check2%',
+                    'withdra' => 0,
+                    'deposit' => 0,
+                    'note' => 'Payment from Mark Moore',
+                ],
+                [
+                    'desc' => 'Payroll Run',
+                    'withdra' => 3743.23,
+                    'deposit' => 0,
+                    'note' => '',
+                ],
+                [
+                    'desc' => 'Deposit',
+                    'withdra' => 0,
+                    'deposit' => 3656.45,
+                    'note' => '',
+                ],
+                [
+                    'desc' => 'Debit Transaction',
+                    'withdra' => 1548.96,
+                    'deposit' => 0,
+                    'note' => 'ABC Business Supplies',
+                ],
+            ];
+
+            // Random ngày giao dịch thực sự trong khoảng period (không trùng, sắp xếp tăng dần)
+            $periodStart = $startDate->copy();
+            $periodEnd = $endDate->copy();
+            $daysRange = $periodEnd->diffInDays($periodStart);
+
+            $transactionDates = [];
+            while (count($transactionDates) < count($templateTransactions)) {
+                $randDay = $periodStart->copy()->addDays(rand(0, $daysRange))->format('m/d');
+                if (!in_array($randDay, $transactionDates)) {
+                    $transactionDates[] = $randDay;
+                }
+            }
+            sort($transactionDates);
+
+            // Random check number
+            $check1 = rand(1000, 9999);
+            $check2 = rand(100, 999);
+
+            // Tính tổng tiền vào, tổng tiền ra theo giao dịch thực tế
+            $totalIn = 0;
+            $totalOut = 0;
+            foreach ($templateTransactions as $t) {
+                $totalIn += $t['deposit'];
+                $totalOut += $t['withdra'];
+            }
             $ebBal = $totalOn + $totalIn - $totalOut;
 
             $templateProcessor->setValue('month', $month);
@@ -117,74 +211,28 @@ class BankBillController extends Controller
             $templateProcessor->setValue('totalOut', number_format($totalOut, 2, '.', ','));
             $templateProcessor->setValue('ebBal', number_format($ebBal, 2, '.', ','));
 
-            // 3. Map Transactions (11 giao dịch, mapping đúng placeholder trong ảnh)
-            // Danh sách mô tả mẫu và các dòng đặc biệt
-            $descs = [
-                ['desc' => 'Internet Bill', 'withdra' => rand(50, 150) / 1.0, 'deposit' => 0],
-                ['desc' => 'Electric Bill', 'withdra' => rand(80, 200) / 1.0, 'deposit' => 0],
-                ['desc' => '', 'withdra' => 0, 'deposit' => rand(200, 500) / 1.0], // check dòng 3
-                ['desc' => 'Payroll Run', 'withdra' => rand(500, 1000) / 1.0, 'deposit' => 0],
-                ['desc' => 'Deposit', 'withdra' => 0, 'deposit' => rand(300, 700) / 1.0],
-                ['desc' => 'Debit Transaction', 'withdra' => rand(200, 400) / 1.0, 'deposit' => 0],
-                ['desc' => 'Rent Bill', 'withdra' => rand(700, 1200) / 1.0, 'deposit' => rand(200, 400) / 1.0],
-                ['desc' => '', 'withdra' => 0, 'deposit' => 0], // check dòng 8
-                ['desc' => 'Payroll Run', 'withdra' => rand(500, 1000) / 1.0, 'deposit' => 0],
-                ['desc' => 'Debit Transaction', 'withdra' => rand(300, 700) / 1.0, 'deposit' => 0],
-            ];
-            // Các dòng đặc biệt: check, payment from ...
-            $checkNoRand1 = rand(1000, 9999);
-            $checkNoRand2 = rand(1000, 9999);
-            $desc3 = 'Payment from Lisa Williams';
-            $desc6 = 'Main Office Wholesale';
-            $desc7 = 'Payment from Mark Moore';
-            $desc10 = 'ABC Business Supplies';
-
-            // Giao dịch ngày từ đầu đến cuối kỳ
+            // 3. Map Transactions (theo ngày random, sát thực tế)
             $balance = $totalOn;
-            for ($i = 1; $i <= 11; $i++) {
-                $curDate = $startDate->copy()->addDays($i - 1)->format('m/d');
-                $templateProcessor->setValue("date$i", $curDate);
-
-                // Xử lý từng dòng theo đúng template
-                if ($i == 3) {
-                    // Dòng check + payment
-                    $templateProcessor->setValue("desc$i", "Check No. $checkNoRand1");
-                    $templateProcessor->setValue("checkNoRand1", $checkNoRand1);
-                    $templateProcessor->setValue("desc3", $desc3);
-                    $withdra = '';
-                    $deposit = number_format($descs[2]['deposit'], 2, '.', ',');
-                    $balance += $descs[2]['deposit'];
-                } elseif ($i == 6) {
-                    $templateProcessor->setValue("desc$i", 'Debit Transaction');
-                    $templateProcessor->setValue("desc6", $desc6);
-                    $withdra = number_format($descs[5]['withdra'], 2, '.', ',');
-                    $deposit = '';
-                    $balance -= $descs[5]['withdra'];
-                } elseif ($i == 8) {
-                    $templateProcessor->setValue("desc$i", "Check No. $checkNoRand2");
-                    $templateProcessor->setValue("checkNoRand2", $checkNoRand2);
-                    $templateProcessor->setValue("desc7", $desc7);
-                    $withdra = '';
-                    $deposit = '';
-                } elseif ($i == 11) {
-                    $templateProcessor->setValue("desc$i", 'Debit Transaction');
-                    $templateProcessor->setValue("desc10", $desc10);
-                    $withdra = number_format($descs[9]['withdra'], 2, '.', ',');
-                    $deposit = '';
-                    $balance -= $descs[9]['withdra'];
-                } else {
-                    $templateProcessor->setValue("desc$i", $descs[$i - 1]['desc']);
-                    $withdra = $descs[$i - 1]['withdra'] ? number_format($descs[$i - 1]['withdra'], 2, '.', ',') : '';
-                    $deposit = $descs[$i - 1]['deposit'] ? number_format($descs[$i - 1]['deposit'], 2, '.', ',') : '';
-                    $balance = $balance + $descs[$i - 1]['deposit'] - $descs[$i - 1]['withdra'];
-                }
-
-                $templateProcessor->setValue("withdra$i", $withdra);
-                $templateProcessor->setValue("deposit" . ($i <= 4 ? $i : $i - 4), $deposit); // mapping deposit1-4
-                $templateProcessor->setValue("balance" . ($i + 1), number_format($balance, 2, '.', ','));
-            }
-            // Số dư đầu kỳ
             $templateProcessor->setValue("balance1", number_format($totalOn, 2, '.', ','));
+            foreach ($templateTransactions as $i => $t) {
+                $date = $transactionDates[$i];
+                // Thay check number vào description nếu có
+                $desc = str_replace(['%check1%', '%check2%'], [$check1, $check2], $t['desc']);
+                $withdra = $t['withdra'] ? number_format($t['withdra'], 2, '.', ',') : '';
+                $deposit = $t['deposit'] ? number_format($t['deposit'], 2, '.', ',') : '';
+                $balance = $balance + $t['deposit'] - $t['withdra'];
+
+                $templateProcessor->setValue("date" . ($i + 1), $date);
+                $templateProcessor->setValue("desc" . ($i + 1), $desc);
+                $templateProcessor->setValue("withdra" . ($i + 1), $withdra);
+                $templateProcessor->setValue("deposit" . ($i + 1), $deposit);
+                $templateProcessor->setValue("balance" . ($i + 2), number_format($balance, 2, '.', ','));
+
+                // Map note nếu có
+                if ($t['note']) {
+                    $templateProcessor->setValue("note" . ($i + 1), $t['note']);
+                }
+            }
             // Số dư cuối kỳ
             $templateProcessor->setValue("ebBal", number_format($balance, 2, '.', ','));
 
