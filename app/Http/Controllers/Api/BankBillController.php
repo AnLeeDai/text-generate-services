@@ -45,14 +45,6 @@ class BankBillController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $freeSpace = round(disk_free_space(public_path()) / 1024 / 1024 / 1024, 2);
-
-        $minFreeSpace = 1;
-
-        if ($freeSpace < $minFreeSpace) {
-            return response()->json(['error' => 'Dịch vụ không phản hồi do không đủ dung lượng ổ đĩa để lưu các tệp tin.'], 500);
-        }
-
         $outputFilesSuccess = [];
         $outputFilesFailures = [];
 
@@ -122,7 +114,6 @@ class BankBillController extends Controller
 
         return response()->json([
             'message' => 'Các hóa đơn ngân hàng đã được tạo thành công.',
-            'free_space' => "$freeSpace GB",
             'total' => count($outputFilesSuccess),
             'failures' => $outputFilesFailures,
             'data' => $outputFilesSuccess,
