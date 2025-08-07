@@ -122,6 +122,7 @@ class BankBillController extends Controller
 
         return response()->json([
             'message' => 'Các hóa đơn ngân hàng đã được tạo thành công.',
+            'free_space' => "$freeSpace GB",
             'total' => count($outputFilesSuccess),
             'failures' => $outputFilesFailures,
             'data' => $outputFilesSuccess,
