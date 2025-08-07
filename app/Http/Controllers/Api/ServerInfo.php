@@ -7,6 +7,86 @@ use File;
 
 class ServerInfo extends Controller
 {
+    public function requestPerformance()
+    {
+        $executionTimes = [];
+        $cpuUsages = [];
+        $ramUsages = [];
+
+        $cpuThreshold = 90.0;
+        $ramThreshold = 90.0;
+        $maxIterations = 10000; // prevent infinite loop
+
+        $iteration = 0;
+        while ($iteration < $maxIterations) {
+            $startTime = microtime(true);
+
+            // CPU intensive task
+            $cpuTask = 0;
+            for ($j = 0; $j < 100000; $j++) {
+                $cpuTask += sqrt($j);
+            }
+
+            // RAM intensive task
+            $ramTask = [];
+            for ($k = 0; $k < 1000; $k++) {
+                $ramTask[] = str_repeat('x', 1024 * 10);
+            }
+
+            // Measure CPU load (first value)
+            $cpuLoad = function_exists('sys_getloadavg') ? sys_getloadavg()[0] : 0;
+            $cpuCores = $this->getCpuCores() ?: 1;
+            $cpuPercent = min(100, round($cpuLoad / $cpuCores * 100, 2));
+            $cpuUsages[] = $cpuPercent;
+
+            // Measure RAM usage (in MB and percent)
+            $ramUsage = memory_get_usage(true) / 1048576;
+            $ramUsages[] = round($ramUsage, 2);
+
+            $totalRam = $this->getTotalRam();
+            $freeRam = $this->getFreeRam();
+            $usedRam = $totalRam - $freeRam;
+            $ramPercent = $totalRam > 0 ? round($usedRam / $totalRam * 100, 2) : 0;
+
+            unset($ramTask);
+
+            $endTime = microtime(true);
+            $executionTimes[] = ($endTime - $startTime) * 1000;
+
+            if ($cpuPercent >= $cpuThreshold && $ramPercent >= $ramThreshold) {
+                break;
+            }
+
+            $iteration++;
+        }
+
+        $averageTime = round(array_sum($executionTimes) / count($executionTimes), 2);
+        $maxTime = round(max($executionTimes), 2);
+        $minTime = round(min($executionTimes), 2);
+
+        $averageCpu = round(array_sum($cpuUsages) / count($cpuUsages), 2);
+        $maxCpu = round(max($cpuUsages), 2);
+        $minCpu = round(min($cpuUsages), 2);
+
+        $averageRam = round(array_sum($ramUsages) / count($ramUsages), 2);
+        $maxRam = round(max($ramUsages), 2);
+        $minRam = round(min($ramUsages), 2);
+
+        return response()->json([
+            'iterations' => $iteration + 1,
+            'average_response_time_ms' => $averageTime,
+            'max_response_time_ms' => $maxTime,
+            'min_response_time_ms' => $minTime,
+            'average_cpu_percent' => $averageCpu,
+            'max_cpu_percent' => $maxCpu,
+            'min_cpu_percent' => $minCpu,
+            'average_ram_usage_mb' => $averageRam,
+            'max_ram_usage_mb' => $maxRam,
+            'min_ram_usage_mb' => $minRam,
+            'note' => 'Dừng lại khi CPU và RAM đạt >= 90% hiệu suất hoặc đạt giới hạn lặp.',
+        ]);
+    }
+
     public function check()
     {
         $path = base_path();

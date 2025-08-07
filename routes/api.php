@@ -10,6 +10,7 @@ Route::group(['prefix' => 'system'], function () {
     Route::get('/list', [\App\Http\Controllers\Api\FileCheckController::class, 'listFiles']);
     Route::delete('/delete-all', [\App\Http\Controllers\Api\FileCheckController::class, 'deleteAllFiles']);
     Route::delete('/delete/{fileName}', [\App\Http\Controllers\Api\FileCheckController::class, 'deleteFileByName']);
+    Route::get('/performance', [\App\Http\Controllers\Api\ServerInfo::class, 'requestPerformance']);
 });
 
 Route::group(['prefix' => 'bank-bill'], function () {
