@@ -13,10 +13,11 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /var/www
 
-# Copy composer installer and install composer
+# Copy composer installer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Copy application files
+# Copy application files into the container. This must happen before `composer install`
+# so that the composer.json file is available.
 COPY . .
 
 # Install PHP dependencies and clear composer cache
