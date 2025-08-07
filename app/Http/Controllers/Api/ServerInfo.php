@@ -14,7 +14,7 @@ class ServerInfo extends Controller
         $totalBytes = disk_total_space($path) ?: 0;
         $percentFree = $totalBytes > 0 ? round($freeBytes / $totalBytes * 100, 2) : 0.0;
 
-        $cpuLoad = function_exists('sys_getloadavg') ? sys_getloadavg() : [0, 0, 0];
+        $cpuLoad = function_exists('sys_getloadavg') ? sys_getloadavg() : [0];
         $cpuCores = $this->getCpuCores() ?: 0;
         $cpuModel = $this->getCpuModel() ?: 'Unknown';
 
@@ -26,7 +26,7 @@ class ServerInfo extends Controller
 
         $phpVersion = $this->getPhpVersion() ?: 'Unknown';
 
-        $loadAverage = function_exists('sys_getloadavg') ? sys_getloadavg() : [0, 0, 0];
+        $loadAverage = function_exists('sys_getloadavg') ? sys_getloadavg() : [0];
 
         if ($percentFree < 10) {
             File::deleteDirectory(base_path('generated'));
@@ -56,14 +56,16 @@ class ServerInfo extends Controller
 
     private function getTotalRam(): int
     {
-        $totalRam = shell_exec("free -b | grep Mem | awk '{print $2}'");
-        return $totalRam ? (int) $totalRam : 0;
+        $memInfo = file_get_contents("/proc/meminfo");
+        preg_match("/MemTotal:\s+(\d+)/", $memInfo, $matches);
+        return isset($matches[1]) ? (int) $matches[1] : 0;
     }
 
     private function getFreeRam(): int
     {
-        $freeRam = shell_exec("free -b | grep Mem | awk '{print $4}'");
-        return $freeRam ? (int) $freeRam : 0;
+        $memInfo = file_get_contents("/proc/meminfo");
+        preg_match("/MemFree:\s+(\d+)/", $memInfo, $matches);
+        return isset($matches[1]) ? (int) $matches[1] : 0;
     }
 
     private function getCpuCores(): int
