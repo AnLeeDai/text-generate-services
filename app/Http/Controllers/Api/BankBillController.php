@@ -62,13 +62,22 @@ class BankBillController extends Controller
         // Sinh ngày tăng dần, nhiều nhất 11 dòng và không trùng nhau
         $dates = [];
         $usedDays = [];
-        for ($i = 0; $i < 11; $i++) {
-            do {
-                $randDay = rand(0, $totalDays);
-            } while (in_array($randDay, $usedDays));
+
+        // Ép ngày đầu tiên luôn là ngày bắt đầu kỳ sao kê
+        $dates[] = $startDate->format('m/d');
+        $usedDays[] = 0; // offset 0 tương ứng ngày bắt đầu
+
+        // Sinh thêm 10 ngày còn lại (đảm bảo không trùng)
+        $need = 10;
+        while ($need > 0) {
+            $randDay = rand(0, $totalDays);
+            if (in_array($randDay, $usedDays)) {
+                continue;
+            }
             $usedDays[] = $randDay;
             $dateObj = (clone $startDate)->addDays($randDay);
             $dates[] = $dateObj->format('m/d');
+            $need--;
         }
         sort($dates);
 
