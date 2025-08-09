@@ -1,35 +1,32 @@
-FROM php:8.2-fpm
+FROM php:8.2-apache
 
-# Set the working directory
 WORKDIR /var/www
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    zip unzip curl git libxml2-dev libzip-dev libpng-dev libjpeg-dev libonig-dev \
-    sqlite3 libsqlite3-dev
+    git zip unzip curl libzip-dev libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
+    libonig-dev libxml2-dev sqlite3 libsqlite3-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_mysql pdo_sqlite mbstring exif pcntl bcmath gd zip \
+    && a2enmod rewrite headers \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip
+COPY .docker/vhost.conf /etc/apache2/sites-available/000-default.conf
 
-# Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy application files and set ownership
 COPY . /var/www
-COPY --chown=www-data:www-data . /var/www
+RUN chown -R www-data:www-data /var/www
 
-# Install Composer dependencies
-RUN composer install --prefer-dist --no-dev --optimize-autoloader
+RUN composer install --no-dev --prefer-dist --optimize-autoloader
 
-# Set environment variables and generate app key
 COPY .env.example .env
-RUN php artisan key:generate
+RUN php artisan key:generate --force \
+    && php artisan storage:link || true \
+    && php artisan config:cache \
+    && php artisan route:cache \
+    && php artisan view:cache \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && find /var/www -type f -exec chmod 0644 {} \; \
+    && find /var/www -type d -exec chmod 0755 {} \;
 
-# Set the correct permissions
-RUN chmod -R 755 /var/www
-
-# Expose port 8000 for the app
-EXPOSE 8000
-
-# Start the application
-CMD php artisan serve --host=0.0.0.0 --port=8000
+EXPOSE 80
