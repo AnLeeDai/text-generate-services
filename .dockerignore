@@ -1,0 +1,52 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Node modules and build files
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Development files
+.env.local
+.env.development
+.env.testing
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Laravel specific
+/storage/logs/*.log
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/bootstrap/cache/*.php
+
+# Generated files
+/public/generated/
+*.zip
+/database/database.sqlite
+
+# Testing files
+/tests/
+phpunit.xml
+.phpunit.result.cache
+
+# Documentation
+README.md
+CHANGELOG.md
+DEPLOYMENT.md
+API_RESPONSE_FORMAT.md
+test_api_format.sh
+
+# Docker files (except the ones we need)
+docker-compose.yml
+docker-compose.override.yml

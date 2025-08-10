@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\ServerInfo;
 
-Route::get('/', function () {
-    return redirect('/up');
-});
+Route::get('/', [ServerInfo::class, 'check']);

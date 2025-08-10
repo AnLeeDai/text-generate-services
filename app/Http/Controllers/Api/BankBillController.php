@@ -143,7 +143,7 @@ class BankBillController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return $this->validationErrorResponse($validator->errors());
         }
 
         $outputFilesSuccess = [];
@@ -177,7 +177,7 @@ class BankBillController extends Controller
             $depositIndex = [2, 3, 7, 9];
 
             if (!file_exists($fileName)) {
-                return response()->json(['error' => "Không tìm thấy file mẫu tại: $fileName"], 400);
+                return $this->notFoundResponse("Không tìm thấy file mẫu tại: $fileName");
             }
 
             try {
@@ -274,12 +274,11 @@ class BankBillController extends Controller
             }
         }
 
-        return response()->json([
-            'message' => 'Các hóa đơn ngân hàng đã được tạo thành công.',
+        return $this->createdResponse([
             'total' => count($outputFilesSuccess),
             'failures' => $outputFilesFailures,
             'zip_download_url' => $zipFileUrl,
-            'data' => $outputFilesSuccess
-        ], 201);
+            'files' => $outputFilesSuccess
+        ], 'Các hóa đơn ngân hàng đã được tạo thành công.');
     }
 }

@@ -13,6 +13,11 @@
 .phpunit.cache
 .vscode/
 .zed/
+
+# Ignore generated files and outputs
+/public/generated/
+*.zip
+*.docx
 generated/
 
 # Ignore auth and node modules
@@ -27,10 +32,28 @@ generated/
 /storage/pail
 /vendor/
 
-# Ignore Laravel specific files
+# Database files
+/database/database.sqlite
+/database/database.sqlite-journal
+
+# Laravel specific files
 Homestead.json
 Homestead.yaml
 Thumbs.db
 
-# Keep private directory
-/private/
+# Keep private directory but ignore its contents except templates
+/storage/app/private/*
+!/storage/app/private/.gitkeep
+!/storage/app/private/*.docx
+
+# Keep database directory but ignore database file
+/database/database.sqlite
+/database/database.sqlite-journal
+!/database/.gitkeep
+
+# Log files
+/storage/logs/*.log
+
+# Cache files
+/bootstrap/cache/*
+!/bootstrap/cache/.gitkeep

@@ -38,7 +38,7 @@ class FileCheckController extends Controller
                     $this->createZip($files, $zipPath);
                 }
 
-                return response()->json([
+                return $this->successResponse([
                     'total' => $fileCount,
                     'total_size' => $this->humanFileSize($totalSize),
                     'used_percentage' => $usedPercentage,
@@ -49,30 +49,27 @@ class FileCheckController extends Controller
                         'used_disk_space' => $this->humanFileSize($diskUsedSpace),
                         'disk_usage_percentage' => round(($diskUsedSpace / $diskTotalSpace) * 100, 2)
                     ]
-                ]);
+                ], 'Files listed successfully');
             } else {
                 $diskTotalSpace = disk_total_space(public_path());
                 $diskFreeSpace = disk_free_space(public_path());
                 $diskUsedSpace = $diskTotalSpace - $diskFreeSpace;
 
-                return response()->json([
+                return $this->successResponse([
                     'total' => 0,
                     'total_size' => $this->humanFileSize(0),
                     'used_percentage' => 0,
-                    'message' => 'Không có file nào trong thư mục.',
                     'disk_info' => [
                         'total_disk_space' => $this->humanFileSize($diskTotalSpace),
                         'free_disk_space' => $this->humanFileSize($diskFreeSpace),
                         'used_disk_space' => $this->humanFileSize($diskUsedSpace),
                         'disk_usage_percentage' => round(($diskUsedSpace / $diskTotalSpace) * 100, 2)
                     ]
-                ]);
+                ], 'Không có file nào trong thư mục.');
             }
         }
 
-        return response()->json([
-            'message' => 'Thư mục public/generated không tồn tại.'
-        ]);
+        return $this->errorResponse('Thư mục public/generated không tồn tại.', null, 404);
     }
 
     public function deleteAllFiles()
@@ -86,14 +83,10 @@ class FileCheckController extends Controller
                 File::delete($file);
             }
 
-            return response()->json([
-                'message' => 'Tất cả file đã được xóa.'
-            ]);
+            return $this->successResponse(null, 'Tất cả file đã được xóa.');
         }
 
-        return response()->json([
-            'message' => 'Thư mục public/generated không tồn tại.'
-        ]);
+        return $this->errorResponse('Thư mục public/generated không tồn tại.', null, 404);
     }
 
     public function deleteFileByName($fileName)
@@ -103,14 +96,10 @@ class FileCheckController extends Controller
         if (File::exists($generatedPath)) {
             File::delete($generatedPath);
 
-            return response()->json([
-                'message' => "File '$fileName' đã được xóa."
-            ]);
+            return $this->successResponse(null, "File '$fileName' đã được xóa.");
         }
 
-        return response()->json([
-            'message' => "File '$fileName' không tồn tại."
-        ]);
+        return $this->notFoundResponse("File '$fileName' không tồn tại.");
     }
 
     private function shouldUpdateZip($files, $zipPath)

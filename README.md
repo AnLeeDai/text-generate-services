@@ -1,61 +1,243 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Text Generate Services
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A Laravel-based microservice for document generation and file management, specifically designed for bank statement generation and system monitoring.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+### 🏦 Bank Bill Generation
+- Generate realistic bank statements using Word templates
+- Support for BTG Pactual bank format
+- Random transaction generation with realistic data
+- Batch processing with ZIP download
+- Customizable account information
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### 📁 File Management
+- List and manage generated files
+- Bulk file operations (delete all, download all)
+- Disk space monitoring
+- Auto-cleanup when storage is low
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 🖥️ System Monitoring
+- Real-time server information
+- CPU, RAM, and disk usage monitoring
+- System health checks
 
-## Learning Laravel
+### 🔧 API Features
+- Consistent JSON response format
+- Comprehensive error handling
+- Request validation
+- API documentation
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Tech Stack
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- **Framework**: Laravel 12.x
+- **PHP**: 8.3+
+- **Database**: SQLite
+- **Document Processing**: PhpOffice/PhpWord
+- **Frontend**: Blade templates with Tailwind CSS
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Installation
 
-## Laravel Sponsors
+### Prerequisites
+- PHP 8.3 or higher
+- Composer
+- PHP Extensions: GD, SQLite3, ZIP
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### Setup Steps
 
-### Premium Partners
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/AnLeeDai/text-generate-services.git
+   cd text-generate-services
+   ```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+2. **Install dependencies**
+   ```bash
+   composer install
+   ```
+
+3. **Environment setup**
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+
+4. **Database setup**
+   ```bash
+   touch database/database.sqlite
+   php artisan migrate
+   ```
+
+5. **Start the development server**
+   ```bash
+   php artisan serve
+   ```
+
+   The application will be available at `http://127.0.0.1:8000`
+
+## API Endpoints
+
+### System Information
+```bash
+GET /api/system/server-info     # Get server information
+```
+
+### File Management
+```bash
+GET /api/system/list            # List generated files
+DELETE /api/system/delete-all   # Delete all files
+DELETE /api/system/delete/{fileName}  # Delete specific file
+```
+
+### Bank Bill Generation
+```bash
+POST /api/bank-bill/generate    # Generate bank statements
+```
+
+#### Example Request for Bank Bill Generation:
+```json
+POST /api/bank-bill/generate
+Content-Type: application/json
+
+[
+  {
+    "fullname": "John Doe",
+    "accountNumber": "BT123456789012",
+    "totalOn": 50000.00
+  }
+]
+```
+
+## Response Format
+
+All API endpoints return a consistent JSON format:
+
+### Success Response
+```json
+{
+  "success": true,
+  "message": "Operation completed successfully",
+  "data": {
+    // Response data here
+  },
+  "timestamp": "2025-08-10T16:23:28.000000Z"
+}
+```
+
+### Error Response
+```json
+{
+  "success": false,
+  "message": "Error description",
+  "errors": {
+    // Validation errors or error details
+  },
+  "timestamp": "2025-08-10T16:23:28.000000Z"
+}
+```
+
+## Configuration
+
+### Bank Templates
+Place your Word templates in `storage/app/private/`:
+- `btg_pactual_bank_bill_template.docx` - BTG Pactual bank statement template
+
+### Environment Variables
+Key environment variables in `.env`:
+
+```env
+APP_NAME="Text Generate Services"
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost:8000
+
+DB_CONNECTION=sqlite
+CACHE_STORE=database
+SESSION_DRIVER=database
+```
+
+## Development
+
+### Testing API Format
+Run the included test script to verify API response consistency:
+
+```bash
+./test_api_format.sh
+```
+
+### Code Structure
+```
+app/
+├── Http/
+│   ├── Controllers/Api/      # API Controllers
+│   ├── Middleware/           # Custom middleware
+│   └── Traits/              # Reusable traits
+├── Models/                  # Eloquent models
+└── Providers/              # Service providers
+
+storage/app/private/        # Document templates
+public/generated/           # Generated output files
+```
+
+### Key Components
+
+- **ApiResponseTrait**: Standardizes all API responses
+- **FormatApiResponse**: Middleware ensuring consistent response format
+- **BankBillController**: Handles document generation
+- **ServerInfo**: System monitoring and performance testing
+- **FileCheckController**: File management operations
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Missing PHP Extensions**
+   ```bash
+   sudo apt-get install php8.3-gd php8.3-sqlite3 php8.3-zip
+   ```
+
+2. **Permission Issues**
+   ```bash
+   chmod -R 755 storage/
+   chmod -R 755 bootstrap/cache/
+   ```
+
+3. **Database Issues**
+   ```bash
+   rm database/database.sqlite
+   touch database/database.sqlite
+   php artisan migrate:fresh
+   ```
+
+## Performance
+
+- Optimized for batch processing
+- Automatic memory management for large files
+- Disk space monitoring and cleanup
+- Configurable timeouts and limits
+
+## Security
+
+- Input validation on all endpoints
+- File type restrictions
+- Path traversal protection
+- Rate limiting ready
 
 ## Contributing
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Support
+
+For issues and questions:
+- Create an issue on GitHub
+- Check the API documentation in `API_RESPONSE_FORMAT.md`
+- Review the troubleshooting section above
