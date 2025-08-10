@@ -48,6 +48,11 @@ chmod 664 database/database.sqlite
 
 echo "Deployment completed successfully!"
 
+# Configure Apache for Render deployment
+echo "Configuring Apache for Render..."
+chmod +x /var/www/html/configure-apache.sh
+/var/www/html/configure-apache.sh
+
 # Start Apache
 echo "Starting web server..."
 apache2-foreground

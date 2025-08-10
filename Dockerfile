@@ -38,6 +38,13 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Copy application files
 COPY . /var/www/html
 
+# Create necessary directories
+RUN mkdir -p /var/www/html/storage/framework/views \
+    && mkdir -p /var/www/html/storage/framework/cache \
+    && mkdir -p /var/www/html/storage/framework/sessions \
+    && mkdir -p /var/www/html/storage/logs \
+    && mkdir -p /var/www/html/bootstrap/cache
+
 # Set proper permissions
 RUN chown -R www-data:www-data /var/www/html
 
@@ -52,12 +59,12 @@ RUN cp .env.example .env \
     && chmod 664 /var/www/html/database/database.sqlite
 
 # Generate application key and run Laravel setup
-RUN php artisan key:generate --force \
-    && php artisan migrate --force \
-    && php artisan storage:link \
-    && php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache
+RUN php artisan key:generate --force
+RUN php artisan migrate --force  
+RUN php artisan storage:link
+RUN php artisan config:cache
+RUN php artisan route:cache
+RUN php artisan view:cache || echo "View cache skipped - no views directory or views to cache"
 
 # Set final permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database \
@@ -65,17 +72,19 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cac
     && chmod 664 /var/www/html/database/database.sqlite \
     && find /var/www/html -type f -name "*.php" -exec chmod 644 {} \; \
     && find /var/www/html -type d -exec chmod 755 {} \; \
-    && chmod +x /var/www/html/start.sh
+    && chmod +x /var/www/html/start.sh \
+    && chmod +x /var/www/html/configure-apache.sh \
+    && chown -R www-data:www-data /var/www/html/resources/views
 
 # Create directories for generated files
 RUN mkdir -p /var/www/html/public/generated \
     && chown -R www-data:www-data /var/www/html/public/generated \
     && chmod -R 755 /var/www/html/public/generated
 
-# Set environment variables for fixed port
-ENV SERVER_PORT=8000
-ENV APP_URL=http://localhost:8000
+# Set default port (Render will override with PORT env var)
+ENV PORT=8000
 
+# Default expose port (Render will use PORT env var)
 EXPOSE 8000
 
 CMD ["/var/www/html/start.sh"]

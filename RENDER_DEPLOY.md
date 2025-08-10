@@ -13,9 +13,17 @@ Hướng dẫn deploy dự án Text Generate Services lên Render.com
 ### Push code lên GitHub
 ```bash
 git add .
-git commit -m "Prepare for Render deployment"
+git commit -m "Prepare for Render deployment with correct port binding"
 git push origin main
 ```
+
+## 🔧 Port Configuration
+
+Service đã được cấu hình để:
+- ✅ Bind to `0.0.0.0` (tất cả interfaces) thay vì localhost
+- ✅ Sử dụng PORT environment variable từ Render
+- ✅ Fallback to port 8000 nếu PORT không được set
+- ✅ Apache được cấu hình động để listen trên đúng port
 
 ## 🚀 Bước 2: Tạo Web Service trên Render
 
