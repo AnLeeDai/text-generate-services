@@ -72,6 +72,10 @@ RUN mkdir -p /var/www/html/public/generated \
     && chown -R www-data:www-data /var/www/html/public/generated \
     && chmod -R 755 /var/www/html/public/generated
 
-EXPOSE 80
+# Set environment variables for fixed port
+ENV SERVER_PORT=8000
+ENV APP_URL=http://localhost:8000
+
+EXPOSE 8000
 
 CMD ["/var/www/html/start.sh"]

@@ -68,6 +68,55 @@ A Laravel-based microservice for document generation and file management, specif
    php artisan migrate
    ```
 
+5. **Start development server**
+   ```bash
+   # Using custom script (recommended)
+   ./start-dev.sh
+   
+   # Or manually
+   php artisan serve --host=127.0.0.1 --port=8081
+   ```
+
+6. **Access the application**
+   - Web Interface: http://127.0.0.1:8081
+   - API Base URL: http://127.0.0.1:8081/api
+   - Server Info: http://127.0.0.1:8081/api/system/server-info
+
+## Security Configuration
+
+### Localhost Only Access
+This service is configured to run only on localhost (127.0.0.1:8081) for security reasons:
+
+- **Host binding**: Server only listens on 127.0.0.1
+- **IP restriction**: Middleware blocks external IP addresses
+- **Port isolation**: Uses dedicated port 8081
+
+### Environment Variables
+```env
+APP_URL=http://127.0.0.1:8081
+APP_HOST=127.0.0.1
+APP_PORT=8081
+```
+   cd text-generate-services
+   ```
+
+2. **Install dependencies**
+   ```bash
+   composer install
+   ```
+
+3. **Environment setup**
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+
+4. **Database setup**
+   ```bash
+   touch database/database.sqlite
+   php artisan migrate
+   ```
+
 5. **Start the development server**
    ```bash
    php artisan serve

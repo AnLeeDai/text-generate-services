@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->api(prepend: [
+            \App\Http\Middleware\LocalhostOnly::class,
             \App\Http\Middleware\FormatApiResponse::class,
         ]);
     })
