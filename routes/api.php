@@ -15,3 +15,7 @@ Route::group(['prefix' => 'system'], function () {
 Route::group(['prefix' => 'bank-bill'], function () {
     Route::post('/generate', [App\Http\Controllers\Api\BankBillController::class, 'generateBankBillBTGPactualGenerate']);
 });
+
+Route::group(['prefix' => 'banrisul-bill'], function () {
+    Route::post('/generate', [App\Http\Controllers\Api\BanrisulBillController::class, 'generateBanrisulBillGenerate']);
+});
