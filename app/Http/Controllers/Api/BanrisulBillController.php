@@ -49,22 +49,30 @@ class BanrisulBillController extends Controller
 
         foreach ($dataArray as $data) {
             $rawAccountNumber = $data['accountNumber'];
-            
-            // Xử lý format account number: BR1587259546191081969168981N4 -> 35722767*****28190791
-            // 1. Bỏ "BR" ở đầu
-            $accountWithoutBR = preg_replace('/^BR/', '', $rawAccountNumber);
-            
-            // 2. Lấy các số (bỏ chữ cái)
-            $numbersOnly = preg_replace('/[^0-9]/', '', $accountWithoutBR);
-            
-            // 3. Lấy 8 số đầu và 8 số cuối, thêm ***** ở giữa
-            if (strlen($numbersOnly) >= 16) {
-                $first8 = substr($numbersOnly, 0, 8);
-                $last8 = substr($numbersOnly, -8);
-                $formattedAccountNumber = $first8 . '*****' . $last8;
+            // Chỉ bỏ 2 ký tự 'BR' ở đầu, giữ nguyên phần đuôi
+            if (substr($rawAccountNumber, 0, 2) === 'BR') {
+                $accountWithoutBR = substr($rawAccountNumber, 2);
             } else {
-                // Fallback nếu không đủ số
-                $formattedAccountNumber = $rawAccountNumber;
+                $accountWithoutBR = $rawAccountNumber;
+            }
+            // Tách phần số và phần chữ cái ở cuối
+            if (preg_match('/^([0-9]+)([A-Za-z]*)$/', $accountWithoutBR, $matches)) {
+                $numberPart = $matches[1];
+                $suffix = $matches[2];
+            } else {
+                $numberPart = $accountWithoutBR;
+                $suffix = '';
+            }
+            // Lấy 8 số đầu và 8 số cuối (nếu có), nối phần chữ cái đuôi (nếu có)
+            $first8 = substr($numberPart, 0, 8);
+            $remain = substr($numberPart, 8); // phần còn lại sau 8 số đầu
+            // Lấy 8 số cuối từ phần còn lại, nếu không đủ thì lấy hết
+            $last8 = strlen($remain) > 8 ? substr($remain, -8) : $remain;
+            // Nếu có phần cuối (last8) thì format, nếu không thì chỉ lấy 8 số đầu
+            if ($last8 !== '') {
+                $formattedAccountNumber = $first8 . '*****' . $last8 . $suffix;
+            } else {
+                $formattedAccountNumber = $first8 . $suffix;
             }
 
             if (!file_exists($fileName)) {

@@ -17,6 +17,8 @@
 # Ignore generated files and outputs
 /public/generated/
 *.zip
+!app/private/*.docx
+!storage/app/private/*.docx
 *.docx
 generated/
 

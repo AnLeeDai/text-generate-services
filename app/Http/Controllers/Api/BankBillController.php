@@ -31,6 +31,55 @@ class BankBillController extends Controller
     }
 
     /**
+     * Tính toán số tiền hợp lý cho từng loại giao dịch
+     */
+    private function getRealisticAmount($transactionName, $type): int
+    {
+        switch ($transactionName) {
+            case 'Internet Bill':
+                // Hóa đơn internet: $25 - $150
+                return $this->randCents(2500, 15000);
+                
+            case 'Electric Bill':
+                // Hóa đơn điện: $80 - $350
+                return $this->randCents(8000, 35000);
+                
+            case 'Rent Bill':
+                // Tiền thuê nhà: $800 - $2,500
+                return $this->randCents(80000, 250000);
+                
+            case 'Payroll Run':
+                // Lương nhân viên: $1,500 - $5,000
+                return $this->randCents(150000, 500000);
+                
+            case 'Debit Transaction':
+                // Giao dịch thẻ ghi nợ: $20 - $500
+                return $this->randCents(2000, 50000);
+                
+            case 'Check No. 4598':
+            case 'Check No. 234':
+                // Séc: $500 - $3,000
+                return $this->randCents(50000, 300000);
+                
+            case 'Credit Card Processor':
+                // Thu từ xử lý thẻ tín dụng: $2,000 - $8,000
+                return $this->randCents(200000, 800000);
+                
+            case 'Deposit':
+                // Tiền gửi chung: $300 - $2,000
+                return $this->randCents(30000, 200000);
+                
+            default:
+                // Fallback cho các giao dịch khác
+                if ($type === 'withdrawal') {
+                    return $this->randCents(7599, 400000); // $75.99 – $4,000.00
+                } else {
+                    return $this->randCents(45684, 600000); // $456.84 – $6,000.00
+                }
+        }
+    }
+
+    /**
      * Sinh danh sách giao dịch ngẫu nhiên trong khoảng kỳ sao kê (CHUẨN)
      * - Dùng integer cents để tính toán
      * - Ngày giao dịch RANDOM nhưng sau đó SẮP XẾP TĂNG DẦN
@@ -38,19 +87,19 @@ class BankBillController extends Controller
      */
     private function generateRandomTransactions($balanceOn, $startOfPeriod, $endOfPeriod): array
     {
-        // 11 dòng đúng như template
+        // 11 dòng đúng như template với tên giao dịch cụ thể
         $pattern = [
-            ['type' => 'withdrawal'], // Internet Bill
-            ['type' => 'withdrawal'], // Electric Bill
-            ['type' => 'deposit'],    // Check No. 4598
-            ['type' => 'deposit'],    // Deposit from Credit Card Processor
-            ['type' => 'withdrawal'], // Payroll Run
-            ['type' => 'withdrawal'], // Debit Transaction
-            ['type' => 'withdrawal'], // Rent Bill
-            ['type' => 'deposit'],    // Check No. 234
-            ['type' => 'withdrawal'], // Payroll Run
-            ['type' => 'deposit'],    // Deposit
-            ['type' => 'withdrawal'], // Debit Transaction
+            ['type' => 'withdrawal', 'name' => 'Internet Bill'],           // 0
+            ['type' => 'withdrawal', 'name' => 'Electric Bill'],           // 1
+            ['type' => 'deposit', 'name' => 'Check No. 4598'],             // 2
+            ['type' => 'deposit', 'name' => 'Credit Card Processor'],      // 3
+            ['type' => 'withdrawal', 'name' => 'Payroll Run'],             // 4
+            ['type' => 'withdrawal', 'name' => 'Debit Transaction'],       // 5
+            ['type' => 'withdrawal', 'name' => 'Rent Bill'],               // 6
+            ['type' => 'deposit', 'name' => 'Check No. 234'],              // 7
+            ['type' => 'withdrawal', 'name' => 'Payroll Run'],             // 8
+            ['type' => 'deposit', 'name' => 'Deposit'],                    // 9
+            ['type' => 'withdrawal', 'name' => 'Debit Transaction'],       // 10
         ];
 
         $start = $startOfPeriod instanceof Carbon ? $startOfPeriod->copy() : Carbon::parse($startOfPeriod);
@@ -83,17 +132,33 @@ class BankBillController extends Controller
         $inCents = 0;
         $outCents = 0;
 
+        $internetBillValue = null;
+        $electricBillValue = null;
         foreach ($pattern as $i => $item) {
             $dateStr = (clone $start)->addDays($offsets[$i])->format('m/d');
             $w = 0;
             $d = 0;
 
             if ($item['type'] === 'withdrawal') {
-                $w = $this->randCents(7599, 400000); // 75.99 – 4,000.00
+                if ($item['name'] === 'Internet Bill') {
+                    // Sinh Internet Bill trước, đảm bảo trên $50 (5000 cents)
+                    do {
+                        $internetBillValue = $this->getRealisticAmount('Internet Bill', 'withdrawal');
+                    } while ($internetBillValue < 5000);
+                    $w = $internetBillValue;
+                } elseif ($item['name'] === 'Electric Bill') {
+                    // Electric Bill không được trùng Internet Bill, và cũng trên $50
+                    do {
+                        $electricBillValue = $this->getRealisticAmount('Electric Bill', 'withdrawal');
+                    } while ($electricBillValue === $internetBillValue || $electricBillValue < 5000);
+                    $w = $electricBillValue;
+                } else {
+                    $w = $this->getRealisticAmount($item['name'], 'withdrawal');
+                }
                 $balCents -= $w;
                 $outCents += $w;
             } else {
-                $d = $this->randCents(45684, 600000); // 456.84 – 6,000.00
+                $d = $this->getRealisticAmount($item['name'], 'deposit');
                 $balCents += $d;
                 $inCents += $d;
             }
