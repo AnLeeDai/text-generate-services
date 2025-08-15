@@ -228,7 +228,8 @@ class BankBillController extends Controller
             $startOfPeriod = Carbon::now()->subMonths(2)->startOfMonth();
             $endOfPeriod = Carbon::now()->subMonth()->endOfMonth();
             $statementPeriod = $startOfPeriod->format('d/M/Y') . ' to ' . $endOfPeriod->format('d/M/Y');
-            $daysInMonthFormatted = $startOfPeriod->format('M j');
+            $startOfPeriodFormatted = $startOfPeriod->format('M d');
+            $endOfPeriodFormatted = $endOfPeriod->format('M d');
 
             // Sinh giao dịch
             $transactionData = $this->generateRandomTransactions($balanceOn, $startOfPeriod, $endOfPeriod);
@@ -264,7 +265,8 @@ class BankBillController extends Controller
             $templateProcessor->setValue('accountNumber', $formattedAccountNumber);
             $templateProcessor->setValue('statementPeriod', $statementPeriod);
             $templateProcessor->setValue('date', Carbon::now()->format('d/m/Y'));
-            $templateProcessor->setValue('month', $daysInMonthFormatted);
+            $templateProcessor->setValue('month_start', $startOfPeriodFormatted);
+            $templateProcessor->setValue('month_end', $endOfPeriodFormatted);
 
             // SUMMARY (template có R${...} sẵn)
             $templateProcessor->setValue('totalOn', '$' . $this->moneyToStr($balanceArr[0]));
