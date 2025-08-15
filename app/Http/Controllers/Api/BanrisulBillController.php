@@ -10,7 +10,7 @@ use Validator;
 class BanrisulBillController extends Controller
 {
     private $templatePath = [
-        'banrisul' => 'banrisul_bank_business_template.docx',
+        'banrisul' => 'btg_banrisul_bank_bill_template.docx',
     ];
 
     public function __construct()
@@ -49,30 +49,19 @@ class BanrisulBillController extends Controller
 
         foreach ($dataArray as $data) {
             $rawAccountNumber = $data['accountNumber'];
-            // Chỉ bỏ 2 ký tự 'BR' ở đầu, giữ nguyên phần đuôi
-            if (substr($rawAccountNumber, 0, 2) === 'BR') {
-                $accountWithoutBR = substr($rawAccountNumber, 2);
-            } else {
-                $accountWithoutBR = $rawAccountNumber;
-            }
-            // Tách phần số và phần chữ cái ở cuối
-            if (preg_match('/^([0-9]+)([A-Za-z]*)$/', $accountWithoutBR, $matches)) {
-                $numberPart = $matches[1];
-                $suffix = $matches[2];
-            } else {
-                $numberPart = $accountWithoutBR;
-                $suffix = '';
-            }
-            // Lấy 8 số đầu và 8 số cuối (nếu có), nối phần chữ cái đuôi (nếu có)
+            // Loại bỏ tất cả ký tự không phải số
+            $numberPart = preg_replace('/\D/', '', $rawAccountNumber);
+
+            // Lấy 8 số đầu và 8 số cuối (nếu có)
             $first8 = substr($numberPart, 0, 8);
             $remain = substr($numberPart, 8); // phần còn lại sau 8 số đầu
             // Lấy 8 số cuối từ phần còn lại, nếu không đủ thì lấy hết
             $last8 = strlen($remain) > 8 ? substr($remain, -8) : $remain;
             // Nếu có phần cuối (last8) thì format, nếu không thì chỉ lấy 8 số đầu
             if ($last8 !== '') {
-                $formattedAccountNumber = $first8 . '*****' . $last8 . $suffix;
+                $formattedAccountNumber = $first8 . '*****' . $last8;
             } else {
-                $formattedAccountNumber = $first8 . $suffix;
+                $formattedAccountNumber = $first8;
             }
 
             if (!file_exists($fileName)) {
