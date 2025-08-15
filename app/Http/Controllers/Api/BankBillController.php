@@ -39,36 +39,36 @@ class BankBillController extends Controller
             case 'Internet Bill':
                 // Hóa đơn internet: $25 - $150
                 return $this->randCents(2500, 15000);
-                
+
             case 'Electric Bill':
                 // Hóa đơn điện: $80 - $350
                 return $this->randCents(8000, 35000);
-                
+
             case 'Rent Bill':
                 // Tiền thuê nhà: $800 - $2,500
                 return $this->randCents(80000, 250000);
-                
+
             case 'Payroll Run':
                 // Lương nhân viên: $1,500 - $5,000
                 return $this->randCents(150000, 500000);
-                
+
             case 'Debit Transaction':
                 // Giao dịch thẻ ghi nợ: $20 - $500
                 return $this->randCents(2000, 50000);
-                
+
             case 'Check No. 4598':
             case 'Check No. 234':
                 // Séc: $500 - $3,000
                 return $this->randCents(50000, 300000);
-                
+
             case 'Credit Card Processor':
                 // Thu từ xử lý thẻ tín dụng: $2,000 - $8,000
                 return $this->randCents(200000, 800000);
-                
+
             case 'Deposit':
                 // Tiền gửi chung: $300 - $2,000
                 return $this->randCents(30000, 200000);
-                
+
             default:
                 // Fallback cho các giao dịch khác
                 if ($type === 'withdrawal') {
@@ -84,6 +84,7 @@ class BankBillController extends Controller
      * - Dùng integer cents để tính toán
      * - Ngày giao dịch RANDOM nhưng sau đó SẮP XẾP TĂNG DẦN
      * - Dòng đầu tiên luôn là ngày bắt đầu kỳ (offset 0)
+     * - Dòng cuối cùng luôn là ngày kết thúc kỳ (offset cuối)
      */
     private function generateRandomTransactions($balanceOn, $startOfPeriod, $endOfPeriod): array
     {
@@ -104,27 +105,27 @@ class BankBillController extends Controller
 
         $start = $startOfPeriod instanceof Carbon ? $startOfPeriod->copy() : Carbon::parse($startOfPeriod);
         $end = $endOfPeriod instanceof Carbon ? $endOfPeriod->copy() : Carbon::parse($endOfPeriod);
-        $totalDays = $start->diffInDays($end);
+        $totalDays = $start->diffInDays($end); // KHÔNG cộng +1
 
-        // Ép có offset 0 (ngày đầu kỳ), lấy ngẫu nhiên thêm 10 offset khác, rồi SORT tăng dần
-        $offsets = [0];
-        if ($totalDays > 0) {
-            $pool = range(1, $totalDays);
-            shuffle($pool);
-            $offsets = array_merge($offsets, array_slice($pool, 0, 10));
-            $offsets = array_values(array_unique($offsets));
-            // đảm bảo đủ 11 phần tử
+        if ($totalDays < 10) {
+            // Nếu số ngày trong kỳ < 11, lấy tất cả các ngày, lặp lại ngày đầu cho đủ 11
+            $offsets = range(0, $totalDays);
             while (count($offsets) < 11) {
-                $try = mt_rand(1, $totalDays);
-                if (!in_array($try, $offsets, true))
-                    $offsets[] = $try;
-            }
-        } else {
-            // trường hợp kỳ chỉ 1 ngày (hiếm), lặp lại 0 cho đủ 11 (mọi giao dịch cùng ngày)
-            while (count($offsets) < 11)
                 $offsets[] = 0;
+            }
+            $offsets = array_slice($offsets, 0, 11);
+        } else {
+            // Luôn lấy ngày đầu (0) và ngày cuối ($totalDays - 1)
+            $offsets = [0, $totalDays - 1];
+            // Random 9 ngày KHÔNG trùng đầu/cuối, nằm trong khoảng 1..($totalDays-2)
+            $pool = range(1, $totalDays - 2);
+            shuffle($pool);
+            $randomOffsets = array_slice($pool, 0, 9);
+            $offsets = array_merge($offsets, $randomOffsets);
+            $offsets = array_unique($offsets);
+            $offsets = array_slice($offsets, 0, 11); // Đảm bảo đúng 11 phần tử
+            sort($offsets);
         }
-        sort($offsets); // sắp xếp tăng dần theo yêu cầu
 
         $balCents = (int) round(((float) $balanceOn) * 100);
         $balances = [$balCents];     // balance1 (Previous balance)
@@ -218,8 +219,8 @@ class BankBillController extends Controller
         foreach ($dataArray as $data) {
             $data['accountName'] = $data['fullname'];
             $accountNumber = $data['accountNumber'];
-            $accountNumberWithoutPrefix = substr($accountNumber, 2);
-            $formattedAccountNumber = substr($accountNumberWithoutPrefix, 0, 6) . "*****" . substr($accountNumberWithoutPrefix, -6);
+            $accountNumberDigits = preg_replace('/\D/', '', $accountNumber);
+            $formattedAccountNumber = substr($accountNumberDigits, 0, 6) . "*****" . substr($accountNumberDigits, -6);
 
             $balanceOn = (float) $data['totalOn'];
 
