@@ -19,3 +19,7 @@ Route::group(['prefix' => 'bank-bill'], function () {
 Route::group(['prefix' => 'banrisul-bill'], function () {
     Route::post('/generate', [App\Http\Controllers\Api\BanrisulBillController::class, 'generateBanrisulBillGenerate']);
 });
+
+Route::group(['prefix' => 'brazil-gas-bill'], function () {
+    Route::post('/generate', [App\Http\Controllers\Api\BrazilGasBillController::class, 'generate']);
+});
