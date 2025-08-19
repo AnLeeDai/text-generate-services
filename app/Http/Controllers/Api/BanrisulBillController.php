@@ -34,8 +34,8 @@ class BanrisulBillController extends Controller
         $validator = Validator::make($dataArray, [
             '*.filename' => 'required|string',
             '*.fullname' => 'required|string',
-            '*.address1' => 'required|string', 
-            '*.address2' => 'required|string',
+            '*.addressOne' => 'required|string',
+            '*.addressTwo' => 'required|string',
             '*.accountNumber' => 'required|string'
         ]);
 
@@ -80,8 +80,8 @@ class BanrisulBillController extends Controller
 
             // Map placeholders từ template
             $templateProcessor->setValue('fullname', mb_strtoupper($data['fullname'])); // ${fullname} và {fullname}
-            $templateProcessor->setValue('address1', $data['address1']); // {address1}
-            $templateProcessor->setValue('address2', $data['address2']); // {address2}
+            $templateProcessor->setValue('address1', $data['addressOne']); // {address1}
+            $templateProcessor->setValue('address2', $data['addressTwo']); // {address2}
             $templateProcessor->setValue('accountNo', $formattedAccountNumber); // {accountNo}
 
             $sanitizedFilename = str_replace('-', '_', $data['filename']);

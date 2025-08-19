@@ -43,12 +43,12 @@ class BrazilGasBillController extends Controller
         }
 
         $validator = Validator::make($dataArray, [
-            '*.filename'     => 'required|string',
-            '*.fullName'     => 'required|string',
-            '*.fullAddress'  => 'required|string',
-            '*.accountNum'   => 'required|string',
-            '*.addressOne'   => 'required|string',
-            '*.addressTwo'   => 'required|string',
+            '*.filename' => 'required|string',
+            '*.fullName' => 'required|string',
+            '*.fullAddress' => 'required|string',
+            '*.accountNum' => 'required|string',
+            '*.addressOne' => 'required|string',
+            '*.addressTwo' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -57,9 +57,9 @@ class BrazilGasBillController extends Controller
 
         $placeholders = $this->getPlaceholders();
 
-        $outputFilesSuccess  = [];
+        $outputFilesSuccess = [];
         $outputFilesFailures = [];
-        $generatedFilePaths  = [];
+        $generatedFilePaths = [];
 
         foreach ($dataArray as $data) {
 
@@ -72,7 +72,7 @@ class BrazilGasBillController extends Controller
             } catch (\Exception $e) {
                 $outputFilesFailures[] = [
                     'error' => 'Không thể tải template: ' . $e->getMessage(),
-                    'data'  => $data
+                    'data' => $data
                 ];
                 continue;
             }
@@ -89,14 +89,15 @@ class BrazilGasBillController extends Controller
             // auto values
             $now = now();
             $autoValues = [
-                '${nowDate}'     => $now->format('F d, Y'),
-                '${prevMonth}'   => $now->copy()->subMonth()->day(15)->format('M d, Y'),
-                '${dateAmount}'  => $now->format('F d, Y'),
+                '${nowDate}' => $now->format('F d, Y'),
+                '${prevMonth}' => $now->copy()->subMonth()->day(15)->format('M d, Y'),
+                '${dateAmount}' => $now->format('F d, Y'),
                 '${sumMaryDate}' => $now->copy()->subMonth()->day(7)->format('F d, Y'),
-                '${sDate}'       => $now->copy()->subMonth()->day(15)->format('m-d-y'),
-                '${eDate}'       => $now->format('m-d-y'),
-                '${monthPrev}'   => $now->copy()->subMonth()->format('F Y'),
-                '${monthNow}'    => $now->format('F Y'),
+                '${sDate}' => $now->copy()->subMonth()->day(15)->format('m-d-y'),
+                '${eDate}' => $now->format('m-d-y'),
+                '${monthPrev}' => $now->copy()->subMonth()->format('F Y'),
+                '${monthNow}' => $now->format('F Y'),
+                '${nextMonth}' => $now->copy()->addMonth()->day(19)->format('F d, Y'),
             ];
 
             foreach ($placeholders as $p) {
@@ -111,7 +112,7 @@ class BrazilGasBillController extends Controller
                 }
             }
 
-            $safe       = str_replace('-', '_', $data['filename']);
+            $safe = str_replace('-', '_', $data['filename']);
             $outputName = "brazil_gas_bill_{$safe}.docx";
             $outputPath = public_path("generated/$outputName");
 
@@ -123,13 +124,13 @@ class BrazilGasBillController extends Controller
                 $templateProcessor->saveAs($outputPath);
                 $generatedFilePaths[] = $outputPath;
                 $outputFilesSuccess[] = [
-                    'file'     => $outputName,
+                    'file' => $outputName,
                     'file_url' => url("generated/$outputName")
                 ];
             } catch (\Exception $e) {
                 $outputFilesFailures[] = [
                     'error' => 'Không thể lưu file: ' . $e->getMessage(),
-                    'data'  => $data
+                    'data' => $data
                 ];
             }
         }
@@ -150,10 +151,10 @@ class BrazilGasBillController extends Controller
         }
 
         return $this->createdResponse([
-            'total'            => count($outputFilesSuccess),
-            'failures'         => $outputFilesFailures,
+            'total' => count($outputFilesSuccess),
+            'failures' => $outputFilesFailures,
             'zip_download_url' => $zipDownloadUrl,
-            'files'            => $outputFilesSuccess
+            'files' => $outputFilesSuccess
         ], 'Các hóa đơn Brazil Gas đã được tạo thành công.');
     }
 }

@@ -12,7 +12,7 @@ Route::group(['prefix' => 'system'], function () {
     Route::delete('/delete/{fileName}', [\App\Http\Controllers\Api\FileCheckController::class, 'deleteFileByName']);
 });
 
-Route::group(['prefix' => 'bank-bill'], function () {
+Route::group(['prefix' => 'pactual-bill'], function () {
     Route::post('/generate', [App\Http\Controllers\Api\BankBillController::class, 'generateBankBillBTGPactualGenerate']);
 });
 
