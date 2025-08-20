@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use PhpOffice\PhpWord\TemplateProcessor;
 use Illuminate\Http\Request;
 use Validator;
+use Carbon\Carbon;
 
 class BrazilGasBillController extends Controller
 {
@@ -24,7 +25,6 @@ class BrazilGasBillController extends Controller
 
         $plainText = strip_tags($xml);
         $plainText = preg_replace('/\s+/', '', $plainText);
-
         preg_match_all('/\$\{(.*?)\}/', $plainText, $matches);
 
         $placeholders = array_unique($matches[0]);
@@ -49,6 +49,7 @@ class BrazilGasBillController extends Controller
             '*.accountNum' => 'required|string',
             '*.addressOne' => 'required|string',
             '*.addressTwo' => 'required|string',
+            '*.nowDate' => 'sometimes|string',
         ]);
 
         if ($validator->fails()) {
@@ -77,27 +78,37 @@ class BrazilGasBillController extends Controller
                 continue;
             }
 
-            // format account number
             $digits = preg_replace('/\D/', '', $data['accountNum']);
             $formattedAccount = substr($digits, 0, 8) . '*****' . substr($digits, -4);
 
-            // UPPERCASE fullName
             if (isset($data['fullName'])) {
                 $data['fullName'] = strtoupper($data['fullName']);
             }
 
-            // auto values
-            $now = now();
+            try {
+                $baseDate = Carbon::now()->subDay();
+                $randomDays = rand(0, 29);
+                $nowDate = $baseDate->copy()->subDays($randomDays);
+
+                if (!empty($data['nowDate'])) {
+                } else {
+                }
+            } catch (\Exception $e) {
+            }
+
+            $prevMonth = $nowDate->copy()->subMonth();
+            $nextMonth = $nowDate->copy()->addMonth();
+
             $autoValues = [
-                '${nowDate}' => $now->format('F d, Y'),
-                '${prevMonth}' => $now->copy()->subMonth()->day(15)->format('M d, Y'),
-                '${dateAmount}' => $now->format('F d, Y'),
-                '${sumMaryDate}' => $now->copy()->subMonth()->day(7)->format('F d, Y'),
-                '${sDate}' => $now->copy()->subMonth()->day(15)->format('m-d-y'),
-                '${eDate}' => $now->format('m-d-y'),
-                '${monthPrev}' => $now->copy()->subMonth()->format('F Y'),
-                '${monthNow}' => $now->format('F Y'),
-                '${nextMonth}' => $now->copy()->addMonth()->day(19)->format('F d, Y'),
+                '${nowDate}' => $nowDate->format('F d, Y'),
+                '${dateAmount}' => $nowDate->format('F d, Y'),
+                '${sumMaryDate}' => $nowDate->copy()->subDays(43)->format('F d, Y'),
+                '${prevMonth}' => $prevMonth->copy()->day(15)->format('M d, Y'),
+                '${nextMonth}' => $nextMonth->copy()->day($nowDate->day)->format('F d, Y'),
+                '${sDate}' => $prevMonth->copy()->day(15)->format('m-d-y'),
+                '${eDate}' => $nowDate->format('m-d-y'),
+                '${monthPrev}' => $prevMonth->format('F Y'),
+                '${monthNow}' => $nowDate->format('F Y'),
             ];
 
             foreach ($placeholders as $p) {
@@ -105,7 +116,7 @@ class BrazilGasBillController extends Controller
 
                 if ($name === 'accountNum') {
                     $templateProcessor->setValue($p, $formattedAccount);
-                } elseif (isset($data[$name])) {
+                } elseif (array_key_exists($name, $data)) {
                     $templateProcessor->setValue($p, $data[$name]);
                 } elseif (isset($autoValues[$p])) {
                     $templateProcessor->setValue($p, $autoValues[$p]);
@@ -158,3 +169,4 @@ class BrazilGasBillController extends Controller
         ], 'Các hóa đơn Brazil Gas đã được tạo thành công.');
     }
 }
+
