@@ -49,7 +49,6 @@ class BrazilGasBillController extends Controller
             '*.accountNum' => 'required|string',
             '*.addressOne' => 'required|string',
             '*.addressTwo' => 'required|string',
-            '*.therms' => 'required|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -99,12 +98,27 @@ class BrazilGasBillController extends Controller
             $prevMonth = $nowDate->copy()->subMonth();
             $nextMonth = $nowDate->copy()->addMonth();
 
-            $therms = $data['therms'];
+            // Randomize therms value
+            $therms = (float) rand(1000, 3099) / 100;
+
             $totalUsage = $therms * 0.829846 + 7.84;
             $sumCosts = $totalUsage + 155.10;
             $totalGas = $therms * 0.340811 + 3.22;
             $sumGas = $totalGas;
             $oldPrev = $therms + 0.03;
+
+            // Tính toán các giá trị mới
+            $sRead = rand(1000, 5000);
+            $eRead = $sRead + $therms;
+            $gas = $therms * 1;
+            $sumUsed = $therms * 1.0350;
+
+            // Cập nhật logic tính toán cho BILLING SUMMARY
+            $previousBalance = (float) rand(50, 200) + rand(0, 99) / 100;
+            $paymentReceived = -$previousBalance;
+            $currentCharges = 0.00;
+            $gasChargesSummary = $sumCosts + $sumGas;
+            $amountDue = $previousBalance + $paymentReceived + $currentCharges + $gasChargesSummary;
 
             $autoValues = [
                 '${nowDate}' => $nowDate->format('F d, Y'),
@@ -122,6 +136,15 @@ class BrazilGasBillController extends Controller
                 '${totalGas}' => '$' . number_format($totalGas, 2),
                 '${sumGas}' => '$' . number_format($sumGas, 2),
                 '${oldPrev}' => number_format($oldPrev, 2),
+                '${sRead}' => number_format($sRead, 0, '.', ','),
+                '${eRead}' => number_format($eRead, 0, '.', ','),
+                '${gas}' => number_format($gas, 2),
+                '${sumUsed}' => number_format($sumUsed, 2),
+                '${pBalance}' => '$' . number_format($previousBalance, 2),
+                '${pReceived}' => '$' . number_format($paymentReceived, 2),
+                '${cCharges}' => '$' . number_format($currentCharges, 2),
+                '${gasSummary}' => '$' . number_format($gasChargesSummary, 2),
+                '${amDue}' => '$' . number_format($amountDue, 2),
             ];
 
             foreach ($placeholders as $p) {
