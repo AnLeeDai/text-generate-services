@@ -49,7 +49,7 @@ class BrazilGasBillController extends Controller
             '*.accountNum' => 'required|string',
             '*.addressOne' => 'required|string',
             '*.addressTwo' => 'required|string',
-            '*.nowDate' => 'sometimes|string',
+            '*.therms' => 'required|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -99,6 +99,13 @@ class BrazilGasBillController extends Controller
             $prevMonth = $nowDate->copy()->subMonth();
             $nextMonth = $nowDate->copy()->addMonth();
 
+            $therms = $data['therms'];
+            $totalUsage = $therms * 0.829846 + 7.84;
+            $sumCosts = $totalUsage + 155.10;
+            $totalGas = $therms * 0.340811 + 3.22;
+            $sumGas = $totalGas;
+            $oldPrev = $therms + 0.03;
+
             $autoValues = [
                 '${nowDate}' => $nowDate->format('F d, Y'),
                 '${dateAmount}' => $nowDate->format('F d, Y'),
@@ -109,6 +116,12 @@ class BrazilGasBillController extends Controller
                 '${eDate}' => $nowDate->format('m-d-y'),
                 '${monthPrev}' => $prevMonth->format('F Y'),
                 '${monthNow}' => $nowDate->format('F Y'),
+                '${therms}' => number_format($therms, 2),
+                '${totalUsage}' => '$' . number_format($totalUsage, 2),
+                '${sumCosts}' => '$' . number_format($sumCosts, 2),
+                '${totalGas}' => '$' . number_format($totalGas, 2),
+                '${sumGas}' => '$' . number_format($sumGas, 2),
+                '${oldPrev}' => number_format($oldPrev, 2),
             ];
 
             foreach ($placeholders as $p) {
@@ -169,4 +182,3 @@ class BrazilGasBillController extends Controller
         ], 'Các hóa đơn Brazil Gas đã được tạo thành công.');
     }
 }
-
