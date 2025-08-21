@@ -23,3 +23,7 @@ Route::group(['prefix' => 'banrisul-bill'], function () {
 Route::group(['prefix' => 'brazil-gas-bill'], function () {
     Route::post('/generate', [App\Http\Controllers\Api\BrazilGasBillController::class, 'generate']);
 });
+
+Route::group(['prefix' => 'fake-brazil-bill'], function () {
+    Route::post('/generate', [App\Http\Controllers\Api\FakeBrazilBillController::class, 'generate']);
+});
