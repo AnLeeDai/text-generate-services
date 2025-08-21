@@ -97,7 +97,7 @@ class FakeBrazilBillController
 
             // A8/A9/A10
             $this->writeText($sheet, 'A8', $fullName);
-            $this->writeText($sheet, 'A9', $addressOne);
+            $this->writeText($sheet, 'A9', $this->addressOneWithComma($addressOne)); // luôn kết thúc bằng ", "
             $this->writeText($sheet, 'A10', $addressTwo);
 
             // I8: kỳ sao kê ngẫu nhiên trong THÁNG TRƯỚC (dd.mm.Y - dd.mm.Y)
@@ -107,15 +107,13 @@ class FakeBrazilBillController
             // Parse khoảng từ I8
             [$periodStart, $periodEnd] = $this->periodToRange($period);
 
-            // === YÊU CẦU: A24 = start, A43 = end; các ô giữa tăng dần ===
+            // A24 = start, A43 = end
             $this->writeText($sheet, 'A24', $periodStart->format('d.m.Y')); // start (đầu kỳ)
             $this->writeText($sheet, 'A43', $periodEnd->format('d.m.Y'));   // end (cuối kỳ)
 
-            // Các ô "giữa" cần sắp tăng dần (random nhưng xếp theo thứ tự):
+            // Các ô giữa: random nhưng SẮP TĂNG DẦN
             $middleCoords = ['A28', 'A33', 'A34', 'A36', 'A37', 'A38', 'A40', 'A41'];
             $middleDates = $this->randomSortedInteriorDates($periodStart, $periodEnd, count($middleCoords));
-
-            // Gán theo đúng thứ tự mảng trên (ngày tăng dần)
             foreach ($middleCoords as $i => $coord) {
                 $this->writeText($sheet, $coord, $middleDates[$i]->format('d.m.Y'));
             }
@@ -136,7 +134,6 @@ class FakeBrazilBillController
                 'I41' => [2, 5],
                 'I43' => [30, 67],
             ];
-
             foreach ($moneyCells as $coord => [$min, $max]) {
                 $this->writeNumber($sheet, $coord, $this->randMoney($min, $max));
             }
@@ -418,5 +415,19 @@ class FakeBrazilBillController
             $dates[] = $startDay->copy()->addDays($o);
         }
         return $dates;
+    }
+
+    /**
+     * Chuẩn hóa addressOne để luôn kết thúc bằng ", "
+     */
+    private function addressOneWithComma(?string $s): string
+    {
+        $s = (string) $s;
+        $s = rtrim($s);
+        if ($s === '')
+            return '';
+        // bỏ dấu phẩy/khoảng trắng dư ở cuối, rồi gắn đúng ", "
+        $s = rtrim($s, ", \t\n\r\0\x0B");
+        return $s . ', ';
     }
 }
