@@ -29,12 +29,10 @@ class FakeBrazilBillController
         }
 
         $dataArray = $request->all();
-        // Nếu body là object đơn -> bọc thành mảng 1 phần tử
         if (!is_array($dataArray) || (isset($dataArray[0]) && !is_array($dataArray))) {
             $dataArray = [$dataArray];
         }
 
-        // Chấp nhận cả 'filename' và 'fileName'
         foreach ($dataArray as &$row) {
             if (isset($row['fileName']) && empty($row['filename'])) {
                 $row['filename'] = $row['fileName'];
@@ -109,19 +107,17 @@ class FakeBrazilBillController
             // Parse khoảng từ I8
             [$periodStart, $periodEnd] = $this->periodToRange($period);
 
-            // A24 & A28: 2 ngày ngẫu nhiên, KHÔNG TRÙNG NHAU, trong khoảng I8
-            $extraDateCoords = ['A24', 'A28'];
-            $extraDates = $this->randomUniqueDatesBetween($periodStart, $periodEnd, count($extraDateCoords));
-            foreach ($extraDateCoords as $i => $coord) {
-                $this->writeText($sheet, $coord, $extraDates[$i]->format('d.m.Y'));
-            }
+            // === YÊU CẦU: A24 = start, A43 = end; các ô giữa tăng dần ===
+            $this->writeText($sheet, 'A24', $periodStart->format('d.m.Y')); // start (đầu kỳ)
+            $this->writeText($sheet, 'A43', $periodEnd->format('d.m.Y'));   // end (cuối kỳ)
 
-            // A33, A34, A36, A37, A38, A40, A41, A43:
-            // random ngày TĂNG DẦN trong khoảng I8, bắt buộc đầu = start & cuối = end
-            $coordsForDates = ['A33', 'A34', 'A36', 'A37', 'A38', 'A40', 'A41', 'A43'];
-            $dates = $this->randomAscendingDatesAnchored($periodStart, $periodEnd, count($coordsForDates));
-            foreach ($coordsForDates as $i => $coord) {
-                $this->writeText($sheet, $coord, $dates[$i]->format('d.m.Y')); // ví dụ "03.06.2025"
+            // Các ô "giữa" cần sắp tăng dần (random nhưng xếp theo thứ tự):
+            $middleCoords = ['A28', 'A33', 'A34', 'A36', 'A37', 'A38', 'A40', 'A41'];
+            $middleDates = $this->randomSortedInteriorDates($periodStart, $periodEnd, count($middleCoords));
+
+            // Gán theo đúng thứ tự mảng trên (ngày tăng dần)
+            foreach ($middleCoords as $i => $coord) {
+                $this->writeText($sheet, $coord, $middleDates[$i]->format('d.m.Y'));
             }
 
             // I10: mask tài khoản (8 số đầu + **** + 8 số cuối)
@@ -140,6 +136,7 @@ class FakeBrazilBillController
                 'I41' => [2, 5],
                 'I43' => [30, 67],
             ];
+
             foreach ($moneyCells as $coord => [$min, $max]) {
                 $this->writeNumber($sheet, $coord, $this->randMoney($min, $max));
             }
@@ -245,7 +242,6 @@ class FakeBrazilBillController
             if ($coord === '')
                 continue;
 
-            // Nếu ô nằm trong vùng merge -> lấy ô top-left
             foreach ($sheet->getMergeCells() as $range) {
                 if ($this->coordInRange($coord, $range)) {
                     $coord = $this->topLeftOfRange($range);
@@ -260,7 +256,7 @@ class FakeBrazilBillController
                 $raw = $raw->getPlainText();
             }
 
-            $result[$addr] = $raw; // chỉ trả về raw
+            $result[$addr] = $raw;
         }
 
         // 6) Thu dọn
@@ -280,7 +276,6 @@ class FakeBrazilBillController
 
     private function coordInRange(string $coord, string $range): bool
     {
-        // $range: "A1" hoặc "A1:C3"
         [$start, $end] = Coordinate::rangeBoundaries($range);
         [$colStr, $row] = Coordinate::coordinateFromString($coord);
         $col = Coordinate::columnIndexFromString($colStr);
@@ -310,7 +305,6 @@ class FakeBrazilBillController
     private function writeText($sheet, string $coord, string $text): void
     {
         $coord = $this->ensureWritableCoord($sheet, strtoupper($coord));
-        // ghi dạng text để không bị coi là công thức
         $sheet->setCellValueExplicit($coord, $text, DataType::TYPE_STRING);
     }
 
@@ -318,7 +312,6 @@ class FakeBrazilBillController
     {
         $coord = $this->ensureWritableCoord($sheet, strtoupper($coord));
         $sheet->setCellValue($coord, $value);
-        // định dạng số có 2 chữ số thập phân và phân tách hàng nghìn
         $sheet->getStyle($coord)->getNumberFormat()->setFormatCode('#,##0.00');
     }
 
@@ -346,14 +339,13 @@ class FakeBrazilBillController
 
     private function randomStatementPeriod(): string
     {
-        // kỳ sao kê trong THÁNG TRƯỚC, ví dụ "02.06.2025 - 26.06.2025"
-        $anchor = now()->subMonthNoOverflow(); // Carbon
+        $anchor = now()->subMonthNoOverflow();
         $startOfMonth = $anchor->copy()->startOfMonth();
         $endOfMonth = $anchor->copy()->endOfMonth();
 
         $lastDay = (int) $endOfMonth->day;
-        $startDay = random_int(1, min(5, max(1, $lastDay - 25)));   // 1..5
-        $minEnd = min($lastDay, max($startDay + 10, 20));         // cách start >=10
+        $startDay = random_int(1, min(5, max(1, $lastDay - 25)));
+        $minEnd = min($lastDay, max($startDay + 10, 20));
         $endDay = random_int($minEnd, $lastDay);
 
         $start = $startOfMonth->copy()->day($startDay);
@@ -362,9 +354,6 @@ class FakeBrazilBillController
         return $start->format('d.m.Y') . ' - ' . $end->format('d.m.Y');
     }
 
-    /**
-     * Parse "dd.mm.Y - dd.mm.Y" -> [Carbon $start, Carbon $end]
-     */
     private function periodToRange(string $period): array
     {
         $parts = explode('-', $period, 2);
@@ -375,7 +364,6 @@ class FakeBrazilBillController
             $start = Carbon::createFromFormat('d.m.Y', $startStr)->startOfDay();
             $end = Carbon::createFromFormat('d.m.Y', $endStr)->endOfDay();
         } catch (\Throwable $e) {
-            // Fallback: lấy tháng trước nếu parse lỗi
             $anchor = now()->subMonthNoOverflow();
             $start = $anchor->copy()->startOfMonth();
             $end = $anchor->copy()->endOfMonth();
@@ -388,85 +376,46 @@ class FakeBrazilBillController
     }
 
     /**
-     * Tạo mảng $n ngày (Carbon) tăng dần trong [start, end] với
-     * PHẦN TỬ ĐẦU = start và PHẦN TỬ CUỐI = end.
-     * Nếu khoảng không đủ rộng để có $n-2 ngày nội bộ khác nhau, sẽ cho phép lặp lại (không giảm dần).
+     * Sinh N ngày nội bộ (loại trừ biên) NGẪU NHIÊN và SẮP XẾP TĂNG DẦN.
+     * - Nếu số ngày nội bộ >= N => tất cả DISTINCT và STRICTLY ASC.
+     * - Nếu không đủ => lấy hết ngày nội bộ rồi PAD bằng ngày cuối (non-decreasing).
      */
-    private function randomAscendingDatesAnchored(Carbon $start, Carbon $end, int $n): array
+    private function randomSortedInteriorDates(Carbon $start, Carbon $end, int $n): array
     {
-        $n = max(1, $n);
-        $daysSpan = $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay());
+        $n = max(0, $n);
+        if ($n === 0)
+            return [];
 
-        // Trường hợp 1 phần tử: chỉ start (cũng là end)
-        if ($n === 1) {
-            return [$start->copy()];
+        $startDay = $start->copy()->startOfDay();
+        $endDay = $end->copy()->startOfDay();
+        $daysSpan = $startDay->diffInDays($endDay);
+        $maxInterior = max(0, $daysSpan - 1); // offset hợp lệ: 1..daysSpan-1
+
+        if ($maxInterior <= 0) {
+            // Không có ngày nội bộ -> toàn bộ là start (vẫn không giảm)
+            return array_fill(0, $n, $startDay->copy());
         }
 
-        // Nếu start == end, tất cả đều là cùng một ngày
-        if ($daysSpan === 0) {
-            return array_fill(0, $n, $start->copy());
-        }
-
-        // n == 2: đúng [start, end]
-        if ($n === 2) {
-            return [$start->copy(), $end->copy()];
-        }
-
-        // n >= 3: cố gắng chọn (n-2) ngày nội bộ trong (start, end)
-        $needInterior = $n - 2;
-        $maxInteriorOffset = max(0, $daysSpan - 1); // offset hợp lệ: 1..daysSpan-1
-
-        $interiorOffsets = [];
-        if ($maxInteriorOffset >= $needInterior) {
-            // đủ ngày để chọn distinct
-            while (count($interiorOffsets) < $needInterior) {
-                $o = random_int(1, $maxInteriorOffset);
-                $interiorOffsets[$o] = true;
+        if ($maxInterior >= $n) {
+            // đủ ngày để chọn DISTINCT
+            $chosen = [];
+            while (count($chosen) < $n) {
+                $o = random_int(1, $maxInterior);
+                $chosen[$o] = true; // set để không trùng
             }
-            $interiorOffsets = array_keys($interiorOffsets);
-            sort($interiorOffsets);
+            $offsets = array_keys($chosen);
+            sort($offsets); // TĂNG DẦN
         } else {
-            // không đủ ngày khác nhau -> đi tuần tự rồi pad bằng end-1
-            for ($o = 1; $o <= $maxInteriorOffset; $o++) {
-                $interiorOffsets[] = $o;
+            // không đủ -> lấy toàn bộ 1..maxInterior rồi pad bằng maxInterior (non-decreasing)
+            $offsets = range(1, $maxInterior);
+            while (count($offsets) < $n) {
+                $offsets[] = $maxInterior;
             }
-            while (count($interiorOffsets) < $needInterior) {
-                $interiorOffsets[] = $maxInteriorOffset; // lặp gần end để giữ không giảm dần
-            }
-            sort($interiorOffsets);
         }
-
-        $dates = [$start->copy()];
-        foreach ($interiorOffsets as $o) {
-            $dates[] = $start->copy()->addDays($o);
-        }
-        $dates[] = $end->copy();
-
-        return $dates;
-    }
-
-    /**
-     * Chọn ngẫu nhiên $n ngày KHÔNG TRÙNG NHAU trong [start, end] (bao gồm 2 biên).
-     */
-    private function randomUniqueDatesBetween(Carbon $start, Carbon $end, int $n): array
-    {
-        $n = max(1, $n);
-        $daysSpan = $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay());
-        // số ngày khả dụng (bao gồm biên) là $daysSpan + 1
-        $pick = min($n, $daysSpan + 1);
-
-        // tạo tập offset duy nhất
-        $offsets = [];
-        while (count($offsets) < $pick) {
-            $o = random_int(0, $daysSpan);
-            $offsets[$o] = true;
-        }
-        $offsets = array_keys($offsets);
-        sort($offsets);
 
         $dates = [];
         foreach ($offsets as $o) {
-            $dates[] = $start->copy()->addDays($o);
+            $dates[] = $startDay->copy()->addDays($o);
         }
         return $dates;
     }
