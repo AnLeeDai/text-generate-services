@@ -77,8 +77,8 @@ class BrazilGasBillController extends Controller
                 continue;
             }
 
-            $digits = preg_replace('/\D/', '', $data['accountNum']);
-            $formattedAccount = substr($digits, 0, 8) . '*****' . substr($digits, -4);
+            // ==== CHE SỐ TÀI KHOẢN THEO QUY TẮC MỚI ====
+            $formattedAccount = $this->maskAccountBrazil($data['accountNum']); // VD: 3269284****1886332
 
             if (isset($data['fullName'])) {
                 $data['fullName'] = strtoupper($data['fullName']);
@@ -90,9 +90,12 @@ class BrazilGasBillController extends Controller
                 $nowDate = $baseDate->copy()->subDays($randomDays);
 
                 if (!empty($data['nowDate'])) {
+                    // nếu có nowDate truyền vào thì có thể ưu tiên xử lý ở đây
                 } else {
+                    // để trống: giữ nowDate như đã random
                 }
             } catch (\Exception $e) {
+                $nowDate = Carbon::now();
             }
 
             $prevMonth = $nowDate->copy()->subMonth();
@@ -113,7 +116,7 @@ class BrazilGasBillController extends Controller
             $gas = $therms * 1;
             $sumUsed = $therms * 1.0350;
 
-            // Cập nhật logic tính toán cho BILLING SUMMARY
+            // BILLING SUMMARY
             $previousBalance = (float) rand(50, 200) + rand(0, 99) / 100;
             $paymentReceived = -$previousBalance;
             $currentCharges = 0.00;
@@ -203,5 +206,31 @@ class BrazilGasBillController extends Controller
             'zip_download_url' => $zipDownloadUrl,
             'files' => $outputFilesSuccess
         ], 'Các hóa đơn Brazil Gas đã được tạo thành công.');
+    }
+
+    /**
+     * Che số tài khoản:
+     * - Bỏ ký tự không phải số
+     * - Nếu chuỗi gốc kết thúc bằng chữ cái + 1 số (vd "...B8") thì bỏ 1 số cuối
+     * - Trả về 7 số đầu + "****" + 7 số cuối
+     */
+    private function maskAccountBrazil(string $input): string
+    {
+        // Lấy chuỗi chỉ gồm chữ số
+        $digits = preg_replace('/\D+/', '', $input ?? '');
+        if ($digits === '') {
+            return '*****';
+        }
+
+        // Nếu input kết thúc bằng chữ cái + 1 chữ số (ví dụ "...B8") -> bỏ 1 chữ số cuối (check digit)
+        if (preg_match('/[A-Za-z]\d$/', $input) && strlen($digits) > 1) {
+            $digits = substr($digits, 0, -1);
+        }
+
+        // 8 số đầu, 4 số cuối (nếu không đủ thì lấy phần có sẵn)
+        $first = substr($digits, 0, 8);
+        $last = strlen($digits) >= 4 ? substr($digits, -4) : $digits;
+
+        return "$first*****$last";
     }
 }

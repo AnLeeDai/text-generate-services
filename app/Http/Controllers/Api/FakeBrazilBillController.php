@@ -319,19 +319,23 @@ class FakeBrazilBillController
 
     private function maskAccount(string $input): string
     {
+        // Lấy chuỗi chỉ gồm chữ số
         $digits = preg_replace('/\D+/', '', $input ?? '');
-        $len = strlen($digits);
-        if ($len === 0)
+        if ($digits === '') {
             return '****';
-        if ($len >= 16) {
-            $first = substr($digits, 0, 8);
-            $last = substr($digits, -8);
-        } else {
-            $half = max(2, (int) floor($len / 2));
-            $first = substr($digits, 0, $half);
-            $last = substr($digits, -$half);
         }
-        return $first . '****' . $last;
+
+        // Nếu chuỗi gốc kết thúc bằng chữ cái + 1 chữ số (vd: "...B8")
+        // thì bỏ 1 chữ số cuối (coi như check digit)
+        if (preg_match('/[A-Za-z]\d$/', $input) && strlen($digits) > 1) {
+            $digits = substr($digits, 0, -1);
+        }
+
+        // Lấy 8 số đầu và 8 số cuối (nếu không đủ thì lấy phần có sẵn)
+        $first = substr($digits, 0, 8);
+        $last = (strlen($digits) > 8) ? substr($digits, -8) : '';
+
+        return "$first****$last";
     }
 
     private function randomStatementPeriod(): string
